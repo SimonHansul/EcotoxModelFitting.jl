@@ -5,7 +5,8 @@ using ProgressMeter
 using DataStructures
 using StatsBase
 
-using Setfield
+
+#using Setfield
 using Base.Threads
 import Base: rand
 import Base: getindex
@@ -13,8 +14,8 @@ import Base: setindex!
 import Base:show
 
 
-includet(srcdir("loss.jl")) # definitions of basic loss functions
-includet(srcdir("utils.jl"))
+include("loss.jl") # definitions of basic loss functions
+include("utils.jl")
 
 # reserved column names for the posterior -> cannot be used as parameter names
 const RESERVED_COLNAMES = ["loss", "weight", "model", "chain"]

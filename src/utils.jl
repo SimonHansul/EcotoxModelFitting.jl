@@ -17,10 +17,9 @@ end
 
 function df_to_tex(df::AbstractDataFrame, fname::AbstractString; colnames::Union{Nothing,Vector{AbstractString}} = nothing)::Nothing
 
-    tex_table = @chain df begin
-        !isnothing(colnames) ? rename(_, colnames) : _
-        latexify(env = :table, booktabs = true, latex = false, fmt = FancyNumberFormatter(3))   
-    end 
+    tex_table = df |>
+        x -> !isnothing(colnames) ? rename(x, colnames) : x |> 
+        x -> latexify(x, env = :table, booktabs = true, latex = false, fmt = FancyNumberFormatter(3))   
     
     open(fname, "w") do f
         write(f, tex_table)
