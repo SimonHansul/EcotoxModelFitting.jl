@@ -923,13 +923,10 @@ function run_PMC!(
                     weight_denom += ω_j * ϕ
                 end
 
-                # Beaumont et al. only specify the weight up to a proportionality 
-                # here we are using log-transforms for weights, which performed equally well in the unit test but gives better results for difficult problems
                 ω = log((weight_num/weight_denom) + 1)
 
-                sim = f.simulator(θ_i)
-
-                ρ = dist(f.data, sim) # generate ρ(x,y)
+                sim = f.simulator(θ_i) # run simulations
+                ρ = dist(f.data, sim) # calculate distance (loss)
 
                 particles[i] = θ_i
                 weights[i] = ω

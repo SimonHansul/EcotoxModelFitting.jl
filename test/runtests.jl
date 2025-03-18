@@ -11,7 +11,11 @@ using StatsPlots, Plots.Measures
 using Revise
 using EcotoxModelFitting
 
-include("test01_conjugate_normal.jl") # example using conjugate normal
+include("conjugate/conjugate_normal.jl") # example using conjugate normal
+
+Pkg.activate("test/DEB")
+include("DEB/DEB_growth")
+
 ## example using hyperdist
 ## example using different losses
 ## writing results to disc
