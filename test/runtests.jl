@@ -1,24 +1,18 @@
 using Pkg; Pkg.activate("test")
 
 using Test
+using StatsBase
+using Distributions
+using Random
+using DataFrames
+using DataStructures
+using StatsPlots, Plots.Measures
+
+using Revise
 using EcotoxModelFitting
 
-
-## minimal example (e.g. regression)
-
-m = 0.2
-t = 0.42
-x = 0:.1:10
-y = @. (m*x + t) .* rand(Normal(1, 0.1), length(x))
-
-data = OrderedDict(
-    :
-)
-
-
-
+include("test01_conjugate_normal.jl") # example using conjugate normal
 ## example using hyperdist
-
-
-
 ## example using different losses
+## writing results to disc
+## reading results from disc

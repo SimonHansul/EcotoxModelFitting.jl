@@ -1,9 +1,11 @@
 module EcotoxModelFitting
 using Distributions
-using DataFrames
+using DataFrames, DataFramesMeta
 using ProgressMeter
 using DataStructures
 using StatsBase
+using ComponentArrays
+using LaTeXStrings
 
 
 #using Setfield
@@ -16,6 +18,8 @@ import Base:show
 
 include("loss.jl") # definitions of basic loss functions
 include("utils.jl")
+
+export ModelFit, run_PMC!, Prior
 
 # reserved column names for the posterior -> cannot be used as parameter names
 const RESERVED_COLNAMES = ["loss", "weight", "model", "chain"]
@@ -32,8 +36,7 @@ mutable struct Hyperdist
     dist::Distribution
 end
 
-import Plots:plot
-plot(hyper::Hyperdist) = plot(hyper.dist)
+#plot(hyper::Hyperdist) = plot(hyper.dist)
 
 import Distributions: mode, mean, median, std, var, minimum, maximum, pdf, quantile
 mode(hyper::Hyperdist) = mode(hyper.dist)
@@ -190,8 +193,8 @@ end
 mutable struct ModelFit
     
     prior::Prior
-    defaultparams#::EcotoxSystems.ComponentArray
-    psim#::EcotoxSystems.ComponentArray
+    defaultparams#::ComponentArray
+    psim#::ComponentArray
     simulator::Function
     loss::Function
     loss_functions::AbstractVector
@@ -203,7 +206,7 @@ mutable struct ModelFit
     time_resolved::Vector{Bool}
     plot_data::Function
     losses::Matrix{Float64}
-    samples::Matrix{Float64}
+    accepted::Matrix{Float64}
     thresholds::Vector{Float64}
     weights::Vector{Float64}
     combine_losses::Function
@@ -211,7 +214,7 @@ mutable struct ModelFit
     """
         ModelFit(;
                 prior::Prior, 
-                defaultparams::EcotoxSystems.ComponentArray,
+                defaultparams::ComponentArray,
                 simulator::Function, 
                 data::Any, 
                 response_vars::Vector{Vector{Symbol}},
@@ -245,7 +248,7 @@ mutable struct ModelFit
     """
     function ModelFit(;
         prior::Prior, 
-        defaultparams::EcotoxSystems.ComponentArray,
+        defaultparams::ComponentArray,
         simulator::Function, 
         data::AbstractDict, 
         response_vars::Vector{Vector{Symbol}},
@@ -253,7 +256,7 @@ mutable struct ModelFit
         data_weights::Union{Nothing,Vector{Vector{Float64}}} = nothing,
         time_var::Union{Nothing,Symbol} = nothing,
         grouping_vars::Union{Nothing,Vector{Vector{Symbol}}} = nothing,
-        plot_data::Function = function plot_data() plot() end,
+        plot_data::Union{Function,Nothing} = nothing,
         loss_functions::Union{Vector{Vector{Function}},Function} = loss_mse, 
         combine_losses::Function = sum # function that combines losses into single value; can also be x->x to retain all losses
         )
@@ -338,7 +341,7 @@ function generate_fitting_simulator(defaultparams, prior::Prior, simulator::Func
     pfit = [deepcopy(defaultparams) for _ in 1:Threads.nthreads()]
 
     # matching parameter labels to indices
-    pfit_labels = EcotoxSystems.ComponentArrays.labels(pfit[1])
+    pfit_labels = ComponentArrays.labels(pfit[1])
     idxs = [findfirst(x -> x == l, pfit_labels) for l in prior.labels]
 
     function fitting_simulator(pvec::Vector{R}; kwargs...) where R <: Real
@@ -352,7 +355,7 @@ function generate_fitting_simulator(defaultparams, prior::Prior, simulator::Func
     end
 
     # define an additional method that takes the componentarray as argument, and dispatches to the original function
-    fitting_simulator(p::CA; kwargs...) where CA <: EcotoxSystems.ComponentArray = simulator(p; kwargs...)
+    fitting_simulator(p::CA; kwargs...) where CA <: ComponentArray = simulator(p; kwargs...)
 
     return fitting_simulator
 
@@ -601,15 +604,15 @@ function posterior_sample!(
 end
 
 function posterior_sample(
-    samples::Matrix{Float64}, 
+    accepted::Matrix{Float64}, 
     weights::Vector{Float64}
     )
-    return samples[:,sample(1:size(f.samples)[2], Weights(weights))]
+    return accepted[:,sample(1:size(accepted)[2], Weights(weights))]
 end
 
 # dispatches to Matrix method
 function posterior_sample(f::ModelFit)
-    return posterior_sample(f.samples, f.weights)
+    return posterior_sample(f.accepted, f.weights)
 end
 
 """
@@ -658,135 +661,9 @@ function prior_predictive_check(
     )
 end
 
-function kernel(
-    dists::AbstractVector, 
-    thresholds::Vector{Float64}
-    )
-
-    w = Vector{Float64}(undef, length(thresholds))
-    for i in eachindex(thresholds)
-        dist = dists[i]
-        threshold = thresholds[i]
-        if dist > threshold
-            w[i] = 0
-        else
-            w[i] = 1/threshold * (1 - (dist/threshold)^2)
-        end
-    end
-
-    return w
-end
 
 compute_thresholds(q_dist::Float64, losses::Matrix{Float64}) = [quantile(d, q_dist) for d in eachrow(losses)]
 
-"""
-    compute_weights(losses::Matrix{Float64}, thresholds::Vector{Float64})::Vector{Float64}
-
-Compute sampling weights for ABC rejection sampling  from `losses` and `thresholds`. <br>
-`losses` is 2-dimensional and has a row for each response variable and a column for each evaluated sample. <br>
-`thresholds` is 1-dimensional and has a cut-off value for the loss for each response variable.  
-"""
-function compute_weights(losses::Matrix{Float64}, thresholds::Vector{Float64})::Vector{Float64}
-
-    # apply kernel function for each column in losses, 
-    # i.e., for each response variable (endpoint, summary statistics, whatchamacallit...)
-
-    weights = [kernel(d, thresholds) for d in eachcol(losses)] |> 
-    x -> hcat(x...)
-
-    # normalize weights for each response variable
-    for i in 1:size(weights)[1]
-        weights[i,:] ./ sum(weights[i,:])
-    end
-
-    # combine weights over response variables by multiplication
-    weights_combined = [prod(w_i) for w_i in eachcol(weights)]
-
-    return weights_combined
-end
-
-function apply_rejection(q_dist::Float64, losses::Matrix{Float64})
-
-    thresholds = compute_thresholds(q_dist, losses)
-    weights = compute_weights(losses, thresholds)
-
-    return weights
-
-end
-
-function apply_rejection!(f::ModelFit, q_dist::Float64)::Nothing
-    
-    f.thresholds = compute_thresholds(q_dist, f.losses)
-    f.weights = compute_weights(f.losses, f.thresholds)
-
-    return nothing
-end
-
-"""
-    run_ABC!(
-        f::ModelFit; 
-        n::Int = 1000,
-        q_dist::Float64 = .1
-        )::Nothing
-
-Execute parameter inference with basic rejection ABC.
-"""
-function run_ABC!(
-    f::ModelFit; 
-    loss = f.loss, 
-    n::Int = 1000,
-    q_dist::Float64 = .1,
-    append::Bool = false,
-    savetag::Union{Nothing,String} = nothing
-    )::Nothing
-
-    @info "#### ---- Evaluating $n ABC samples on $(Threads.nthreads()) threads ---- ####"
-        
-    losses = Vector{Union{Float64,Vector{Float64}}}(undef, n)
-    samples = Vector{Vector{Float64}}(undef, n)
-
-    @showprogress @threads for i in 1:n
-        prior_sample = rand(f.prior)
-        
-        prediction = f.simulator(prior_sample)
-        L = loss(f.data, prediction)
-
-        losses[i] = L
-        samples[i] = prior_sample
-    end
-
-    @info "#### ---- Computing weights ---- ####"
-
-    if !append
-        f.samples = hcat(samples...)
-        f.losses = hcat(losses...)
-    else
-        f.samples = hcat(f.samples, hcat(samples...))
-        f.losses = hcat(f.losses, hcat(losses...))
-    end
-
-    valid_losses = [sum(isinf.(x) .|| isnan.(x))==0 for x in eachcol(f.losses)]
-
-    @info "Retained $(sum(1 .- valid_losses)) valid samples in $n total samples"
-
-    f.samples = f.samples[:,valid_losses]
-    f.losses = f.losses[:,valid_losses]
-
-    apply_rejection!(f, q_dist)
-
-    #if !isnothing(savetag)
-    #    if !isdir(datadir("sims", savetag))
-    #        mkdir(datadir("sims", savetag))
-    #    end
-    #
-    #    if !append
-    #        CSV.write(datadir("sims", savetag, "samples.csv"))
-    #    end
-    #
-    #end
-
-    return nothing
-end
 
 norm(x) = x ./ sum(x)
 
@@ -806,24 +683,6 @@ function prior_prob(prior::Prior, theta::AbstractVector)
 
     return prod(probs)
 
-end
-
-
-# Define a logging function that writes messages to a file
-function setup_logging(log_file_name)
-    # Open the log file for appending
-    log_file = open(log_file_name, "a")
-
-    # Define a file logging backend
-    file_logger = FileLogger(log_file)
-
-    # Create a logger with global level of Debug to capture all levels, especially Warning
-    custom_logger = MinLevelLogger(file_logger, Logging.Debug)
-
-    # Set custom logger as current logger
-    global_logger(custom_logger)
-
-    return log_file  # Return the log file so it can be closed later
 end
 
 """
@@ -860,7 +719,6 @@ function generate_posterior_summary(
     medians = mapslices(x -> median(x, Weights(weights)), particles, dims = 2) |> vec
     q05 = mapslices(x -> quantile(x, Weights(weights), 0.05), particles, dims=2) |> vec
     q95 = mapslices(x -> quantile(x, Weights(weights), 0.95), particles, dims=2) |> vec
-
 
     posterior_summary = DataFrame(
         param = f.prior.labels,
@@ -1120,31 +978,33 @@ function run_PMC!(
         end
     end
 
-    f.samples = all_particles[end]
+    f.accepted = all_particles[end]
     f.weights = all_weights[end]
     f.losses = all_losses[end]
     
     if !isnothing(savetag)
         @info "Saving results to $(datadir("sims", savetag))"
     
-        samples = DataFrame(f.samples', f.prior.labels)
-        samples[!,:weight] .= f.weights
-        samples[!,:loss] = vcat(f.losses...)
+        accepted = DataFrame(f.accepted', f.prior.labels)
+        accepted[!,:weight] .= f.weights
+        accepted[!,:loss] = vcat(f.losses...)
         
         settings = DataFrame(n = n, q_dist = q_dist, t_max = t_max)
 
-        CSV.write(datadir("sims", savetag, "samples.csv"), samples)
+        CSV.write(datadir("sims", savetag, "samples.csv"), accepted)
         CSV.write(datadir("sims", savetag, "settings.csv"), settings)
 
         # saving posterior summary to csv + tex  
         posterior_summary = generate_posterior_summary(
-            f.samples, 
+            f.accepted, 
             f.losses, 
             f.weights;
             tex = !isnothing(savetag),
             savetag = savetag,
             paramlabels = paramlabels
             )
+
+        CSV.write(datadir("sims", savetag, "posterior_summary.csv"), posterior_summary)
 
     end
 
@@ -1237,14 +1097,14 @@ Recover PMC fitting result from a `checkpoint.jld2`-file and assign the content 
 """
 function load_pmcres_from_checkpoint!(f::ModelFit, path::String)
     pmcres = load_pmcres_from_checkpoint(path)
-    f.samples = pmcres.particles[end]
+    f.accepted = pmcres.particles[end]
     f.weights = pmcres.weights[end]
     f.losses = pmcres.dists[end]
 end
 
 function assign_value_by_label!(p, label, value)::Nothing
 
-    labels = EcotoxSystems.ComponentArrays.labels(p)
+    labels = ComponentArrays.labels(p)
     idx = findfirst(x -> x == label, labels)
     
     p[idx] = value

@@ -20,7 +20,7 @@ function df_to_tex(df::AbstractDataFrame, fname::AbstractString; colnames::Union
     tex_table = df |>
         x -> !isnothing(colnames) ? rename(x, colnames) : x |> 
         x -> latexify(x, env = :table, booktabs = true, latex = false, fmt = FancyNumberFormatter(3))   
-    
+
     open(fname, "w") do f
         write(f, tex_table)
     end
@@ -34,7 +34,7 @@ end
 """
 Convert parameter object to table (`DataFrame`).
 """
-function as_table(p::EcotoxSystems.ComponentVector; printtable = true)
+function as_table(p::ComponentArray; printtable = true)
 
     df = DataFrame(
         param = EcotoxSystems.ComponentArrays.labels(p), 
