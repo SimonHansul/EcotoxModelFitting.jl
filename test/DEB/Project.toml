@@ -1,3 +1,4 @@
 [deps]
 EcotoxModelFitting = "11baf4a3-28f5-4d66-8f46-d015c3f5447c"
 EcotoxSystems = "a070e96f-54e2-4e3c-8571-6208d1dd8981"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
