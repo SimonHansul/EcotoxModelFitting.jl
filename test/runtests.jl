@@ -1,20 +1,14 @@
 using Pkg; Pkg.activate("test")
 
 using Test
-using StatsBase
-using Distributions
-using Random
-using DataFrames
-using DataStructures
-using StatsPlots, Plots.Measures
 
 using Revise
 using EcotoxModelFitting
 
 include("conjugate/conjugate_normal.jl") # example using conjugate normal
 
-Pkg.activate("test/DEB")
-include("DEB/DEB_growth")
+include("DEB/growth_only.jl")
+include("DEB/growth_and_repro.jl")
 
 ## example using hyperdist
 ## example using different losses

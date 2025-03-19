@@ -2,7 +2,7 @@
 
 julia_version = "1.11.0"
 manifest_format = "2.0"
-project_hash = "c63ef5c866390eb5a00c3d283eb9835fcfd27c57"
+project_hash = "f4177a4609c1cdef8d5f3ba1e37653738e7ac84e"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"
@@ -561,7 +561,7 @@ version = "1.6.0"
 deps = ["ComponentArrays", "DataFrames", "DataFramesMeta", "DataStructures", "Distributions", "LaTeXStrings", "ProgressMeter", "StatsBase"]
 path = "../.."
 uuid = "11baf4a3-28f5-4d66-8f46-d015c3f5447c"
-version = "0.1.0"
+version = "0.1.1"
 
 [[deps.EcotoxSystems]]
 deps = ["ComponentArrays", "DataFrames", "Distributions", "OrdinaryDiffEq", "Parameters", "PrecompileTools", "Random", "RecipesBase", "StaticArrays", "StatsBase"]
@@ -2041,6 +2041,11 @@ version = "1.1.2"
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
 uuid = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
 version = "1.11.0"
+
+[[deps.ShiftedArrays]]
+git-tree-sha1 = "503688b59397b3307443af35cd953a13e8005c16"
+uuid = "1277b4bf-5013-50f5-be3d-901d8477a67a"
+version = "2.0.0"
 
 [[deps.Showoff]]
 deps = ["Dates", "Grisu"]

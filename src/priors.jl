@@ -163,3 +163,9 @@ function setindex!(prior::Prior, value::Union{Distribution,Hyperdist}, param::Un
     prior.dists[index] = value
 
 end
+
+
+
+function rand(prior::Prior)
+    return [rand(p) for p in prior.dists]
+end

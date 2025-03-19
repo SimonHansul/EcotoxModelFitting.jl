@@ -10,15 +10,15 @@ missing_values_penalty(nominal_length, actual_length) = 1. # (((nominal_length)+
 # mean squared error, including missing values penalty
 # default for nominal length cancels out the penalty if none is given
 function loss_mse(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_length::Int = length(b))::Float64
-    return missing_values_penalty(nominal_length, length(b)) * sum(weight * (a .- b).^2)/length(a)
+    return missing_values_penalty(nominal_length, length(b)) * sum(weight .* (a .- b).^2)/length(a)
 end
 
 function loss_logmse(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_length::Int = length(b))::Float64
-    return log.(missing_values_penalty(nominal_length, length(b)) * sum(weight * (a .- b).^2)/length(a))
+    return log.(missing_values_penalty(nominal_length, length(b)) * sum(weight .* (a .- b).^2)/length(a))
 end
 
 function loss_symmbound(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_length::Int = length(b))::Float64
-    return missing_values_penalty(nominal_length, length(b)) * sum(((weight/length(a)) .* (((a .- b) .^2)/(mean(a)^2 + mean(b)^2))))
+    return missing_values_penalty(nominal_length, length(b)) * sum(((weight ./ length(a)) .* (((a .- b) .^2)/(mean(a)^2 + mean(b)^2))))
 end
 
 
