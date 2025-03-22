@@ -104,10 +104,3 @@ includet("debtest_utils.jl")
     @test f.loss(sim_opt, f.data) < 1
   
 end
-
-
-
-# compare with Nelder-Mead estimate
-
-
-# compare with Turing.jl estimate?

@@ -21,7 +21,26 @@ includet("debtest_utils.jl")
 #   for cum_repro -> 0, loss is going to -Inf! why?
 
 
-@testset "Fitting to growth data only" begin
+# maybe it is a problem that we are normalizing for each response variable separately
+#   implication: fewer observations == higher weight
+#   removing "observation_weight" column 
+#   did not make a difference
+
+# using loss_mse instead of loss_logmse
+#   did not make a difference
+# loss_symmbound?
+#   same
+
+
+# maybe the problem is in the value of X_emb_int?
+#   correct growth + timing of reproduction == way too much offspring
+#   this might explain the clusters in the loss landscape
+# after adjusting egg weight, 
+#   manually adjusted simlations make more sense, 
+#   but problem persists
+
+
+@testset "Fitting to growth and reproduction data" begin
     
     data = EcotoxModelFitting.OrderedDict(
         :growth => load_growth_data(), 
@@ -40,7 +59,7 @@ includet("debtest_utils.jl")
     defaultparams.glb.t_max = maximum(data[:growth].tday) + 5
     defaultparams.glb.dX_in = 1e10
 
-    defaultparams.spc.X_emb_int = 0.01e-3
+    defaultparams.spc.X_emb_int = 2.2e-3
 
     function simulator(p; kwargs...)
 
@@ -65,22 +84,22 @@ includet("debtest_utils.jl")
 
     prior = Prior(
         "spc.dI_max" => truncated(Normal(1., 10.), 0, Inf), 
-        "spc.k_M" => truncated(Normal(0.6, 0.6), 0, Inf),
+        "spc.kappa" => truncated(Normal(0.8, 0.8), 0, 1),
         "spc.eta_AS" => truncated(Normal(0.5, 0.5), 0, 1), 
-        "spc.H_p" => truncated(Normal(100, 100), 0, Inf)
+        "spc.H_p" => truncated(Normal(0.1, 10), 0, Inf)
     )
 
-    f = ModelFit(
+    global f = ModelFit(
         prior = prior,
         defaultparams = defaultparams, 
         simulator = simulator,
         data = data, 
         response_vars = [[:drymass_mg], [:cum_repro]], 
         time_resolved = [true, true], 
-        data_weights = [[0.], [1.]], 
+        data_weights = [[1.], [1.]], 
         time_var = :tday, 
         plot_data = plot_data, 
-        loss_functions = EcotoxModelFitting.loss_logmse
+        loss_functions = EcotoxModelFitting.loss_mse
     )
 
     function simpleloss(prediction, data)
@@ -91,9 +110,9 @@ includet("debtest_utils.jl")
 
     end
 
-    f.loss = simpleloss 
+    #f.loss = simpleloss 
 
-    prior_check = EcotoxModelFitting.prior_predictive_check(f, n = 1000);
+    global prior_check = EcotoxModelFitting.prior_predictive_check(f, n = 1000);
 
     let prior_growth = vcat(map(x->x[:growth], prior_check.predictions)...), 
         prior_repro = vcat(map(x->x[:repro], prior_check.predictions)...)
@@ -106,8 +125,13 @@ includet("debtest_utils.jl")
         display(plt)
     end
 
-
-    @time pmcres = run_PMC!(f; n_init = 10_000, n = 10_000, t_max = 5, q_dist = 0.1);
+    @time pmcres = run_PMC!(
+        f; 
+        n_init = 1_000, 
+        n = 1_000, 
+        t_max = 3, 
+        q_dist = 0.25
+        );
 
     begin
         plot(
@@ -129,22 +153,29 @@ includet("debtest_utils.jl")
         display(plt)
     end
 
-    opt = f.accepted[:,argmin(vec(f.losses))]
+    p_opt = f.accepted[:,argmin(vec(f.losses))]
 
     sim_opt = f.simulator(p_opt)
-    @test f.loss(sim_opt, f.data) < 2
+    @test f.loss(sim_opt, f.data) < 1
   
 end
 
-let L = hcat(prior_check.losses...)
-    #histogram(L[1,:])
-    histogram(L[2,:])
+EcotoxModelFitting.run_optimization
 
+
+let L = hcat(prior_check.losses...),
+    S = hcat(prior_check.samples...),
+    i = 1
+    
     
     fin_repro = map(x->x[:repro][end,:cum_repro], prior_check.predictions)
 
-    scatter(fin_repro, L[2,:])
+    plot(
+        scatter(log10.(fin_repro .+ 1), vec(L), xlabel = "∑R", ylabel = "L"), 
+        scatter(S[i,:], vec(L), xlabel = f.prior.labels[i])
+    )
 end
+
 
 
 
@@ -161,5 +192,15 @@ end
 # )
 
 
+let p = [1.4, 0.8, 0.6, 0.05]
+    sim = f.simulator(p)
+    l = f.loss(sim, f.data)
+
+    plt = f.plot_data()
+
+    @df sim[:growth] plot!(:tday, :S, subplot = 1)
+    @df sim[:repro] plot!(:tday, :cum_repro, subplot = 2, title = l)
+end
 
 
+minimum(prior_check.losses)
