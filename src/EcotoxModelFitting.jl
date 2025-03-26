@@ -77,6 +77,11 @@ function bestfit(accepted::AbstractDataFrame)
     return posterior_sample(accepted[accepted.loss.==minimum(accepted.loss),:])
 end
 
+
+function bestfit(f::ModelFit)    
+    return f.accepted[:,argmin(vec(f.losses))]
+end
+
 function prior_predictive_check(
     f::ModelFit;
     compute_loss::Bool = true,

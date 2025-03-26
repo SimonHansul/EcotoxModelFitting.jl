@@ -5,6 +5,7 @@ using CSV
 using DataFrames
 using Distributions
 using StatsPlots
+using Distances
 using Test
 
 using Revise
@@ -43,25 +44,43 @@ includet("debtest_utils.jl")
 @testset "Fitting to growth and reproduction data" begin
     
     data = EcotoxModelFitting.OrderedDict(
-        :growth => load_growth_data(), 
-        :repro => load_repro_data()
+        :growth => load_growth_data_azoxy(), 
+        :repro => load_repro_data_azoxy()
     )
 
-    function plot_data()
-        plt_growth = @df data[:growth] lineplot(:tday, :drymass_mg, lw = 1.5, marker = true, color = :black, leg = false, xlabel = "Time (d)", ylabel = "Dry mass (mg)")
-        plt_repro = @df data[:repro] lineplot(:tday, :cum_repro, lw = 1.5, marker = true, color = :black, leg = false, xlabel = "Time (d)", ylabel = "Cumulative reproduction (#)")
+    function plot_data(;kwargs...)
+        plt_growth = @df data[:growth] lineplot(:t_day, :S; lw = 1.5, marker = true, color = :black, xlabel = "Time (d)", ylabel = "Dry mass (mg)", leg = true, label = "Data", kwargs...)
+        plt_repro = @df data[:repro] lineplot(:t_day, :cum_repro, lw = 1.5, marker = true, color = :black, leg = false, xlabel = "Time (d)", ylabel = "Cumulative reproduction (#)")
         
         return plot(plt_growth, plt_repro, layout = (1,2), size = (1000,400))
     end
 
-    defaultparams = deepcopy(EcotoxSystems.defaultparams)
+    defaultparams = EcotoxSystems.ComponentVector(
+        glb = EcotoxSystems.defaultparams.glb, 
+        spc = EcotoxSystems.ComponentVector(
+            EcotoxSystems.defaultparams.spc; 
+        )
+    )
 
-    defaultparams.glb.t_max = maximum(data[:growth].tday) + 5
+    defaultparams.glb.t_max = maximum(data[:growth].t_day) + 5
     defaultparams.glb.dX_in = 1e10
 
-    defaultparams.spc.X_emb_int = 2.2e-3
+    defaultparams.spc.X_emb_int = 19.42
+    defaultparams.spc.eta_IA = 0.3333333333333333 
+    defaultparams.spc.eta_AS = 0.9
+    defaultparams.spc.eta_AR = 0.95 
+    defaultparams.spc.dI_max = 12.256744759847304
+    defaultparams.spc.dI_max_emb = 12.256744759847304 
+    defaultparams.spc.K_X = 500.0
+    defaultparams.spc.kappa = 0.9 
+    defaultparams.spc.eta_SA = 0.9
+    defaultparams.spc.k_M = 0.5039684199579493
+    defaultparams.spc.H_p = 258.93333333333334 
 
     function simulator(p; kwargs...)
+
+        #p.spc.dI_max = exp(p.spc.ln_dI_max)
+        #p.spc.H_p = exp(p.spc.ln_H_p)
 
         p.spc.dI_max_emb = p.spc.dI_max # assume same size-specific ingestion for embryos as for non-embryos
         p.spc.k_J = (1-p.spc.kappa)/p.spc.kappa * p.spc.k_M # assume k_J to be linked to k_M
@@ -69,44 +88,45 @@ includet("debtest_utils.jl")
         sim = EcotoxSystems.ODE_simulator(p)
 
         # convert simulation time to experimental time
-        sim[!,:tday] = sim.t .- INIT_AGE
-        sim.tday = ceil.(sim.tday) 
+        sim[!,:t_day] = sim.t .- INIT_AGE
+        sim.t_day = ceil.(sim.t_day) 
 
         sim[!,:drymass_mg] = sim.S
 
-        repro = sim[:,[:tday,:R]] 
+        repro = sim[:,[:t_day,:R]] 
         repro[!,:cum_repro] = trunc.(repro.R ./ p.spc.X_emb_int)
-        repro[!,:tday] .+ EMB_DEV_TIME 
+        repro[!,:t_day] .+ EMB_DEV_TIME 
 
         return EcotoxModelFitting.OrderedDict(:growth => sim, :repro => repro)
 
     end
 
     prior = Prior(
-        "spc.dI_max" => truncated(Normal(1., 10.), 0, Inf), 
+        "spc.dI_max" => truncated(Normal(12., 12.), 0, Inf), #truncated(Normal(1., 10.), 0, Inf), 
         "spc.kappa" => truncated(Normal(0.8, 0.8), 0, 1),
         "spc.eta_AS" => truncated(Normal(0.5, 0.5), 0, 1), 
-        "spc.H_p" => truncated(Normal(0.1, 10), 0, Inf)
-    )
+        "spc.H_p" => truncated(Normal(100, 100), 0, Inf)
+        )
+    
 
     global f = ModelFit(
         prior = prior,
         defaultparams = defaultparams, 
         simulator = simulator,
         data = data, 
-        response_vars = [[:drymass_mg], [:cum_repro]], 
+        response_vars = [[:S], [:cum_repro]], 
         time_resolved = [true, true], 
         data_weights = [[1.], [1.]], 
-        time_var = :tday, 
+        time_var = :t_day, 
         plot_data = plot_data, 
-        loss_functions = EcotoxModelFitting.loss_mse
+        loss_functions = EcotoxModelFitting.loss_mse_logtransform
     )
 
     function simpleloss(prediction, data)
 
-        eval_df = rightjoin(prediction[:repro], data[:repro], on = :tday, makeunique = true)
+        eval_df = rightjoin(prediction[:repro], data[:repro], on = :t_day, makeunique = true)
 
-        l = mean(abs.(eval_df.cum_repro .- eval_df.cum_repro_1))
+        l = mean(abs.(eval_df.cum_repro .- eval0_df.cum_repro_1))
 
     end
 
@@ -119,18 +139,18 @@ includet("debtest_utils.jl")
 
         plt = plot_data()
 
-        @df prior_growth lineplot!(plt, :tday, :drymass_mg, lw = 2, fillalpha = .2, subplot = 1)
-        @df prior_repro lineplot!(plt, :tday, :cum_repro, lw = 2, fillalpha = .2, subplot = 2)
+        @df prior_growth lineplot!(plt, :t_day, :drymass_mg, lw = 2, fillalpha = .2, subplot = 1)
+        @df prior_repro lineplot!(plt, :t_day, :cum_repro, lw = 2, fillalpha = .2, subplot = 2)
 
         display(plt)
     end
 
     @time pmcres = run_PMC!(
         f; 
-        n_init = 1_000, 
-        n = 1_000, 
-        t_max = 3, 
-        q_dist = 0.25
+        n_init = 10_000, 
+        n = 10_000, 
+        t_max = 5, 
+        q_dist = 0.1
         );
 
     begin
@@ -143,64 +163,59 @@ includet("debtest_utils.jl")
 
     posterior_check = posterior_predictions(f);
 
+    p_opt = f.accepted[:,argmin(vec(f.losses))]
+    sim_opt = f.simulator(p_opt)
+
     let retro_growth = vcat(map(x->x[:growth], posterior_check.predictions)...), 
         retro_repro = vcat(map(x->x[:repro], posterior_check.predictions)...), 
         plt = plot_data()
 
-        @df retro_growth lineplot!(plt, :tday, :drymass_mg, lw = 3, fillalpha = .2, subplot = 1)
-        @df retro_repro lineplot!(plt, :tday, :cum_repro, lw = 3, fillalpha = .2, subplot = 2)
+        @df retro_growth lineplot!(plt, :t_day, :drymass_mg, lw = 3, fillalpha = .2, subplot = 1, leg = true, label = "Retrodiction")
+        @df retro_repro lineplot!(plt, :t_day, :cum_repro, lw = 3, fillalpha = .2, subplot = 2)
+
+        @df sim_opt[:growth] lineplot!(plt, :t_day, :drymass_mg, subplot = 1, lw = 3, label = "Best fit")
+        @df sim_opt[:repro] lineplot!(plt, :t_day, :cum_repro, subplot = 2)
 
         display(plt)
     end
 
-    p_opt = f.accepted[:,argmin(vec(f.losses))]
-
-    sim_opt = f.simulator(p_opt)
+    
     @test f.loss(sim_opt, f.data) < 1
   
 end
 
-EcotoxModelFitting.run_optimization
+posterior_check = posterior_predictions(f, 1000);
+
+sumstats_observed = extract_sumstats_azoxy(f.data)
+sumstats_retrodicted = extract_sumstats_azoxy(posterior_check.predictions)
+
+reldiff_max_structural_mass = sumstats_observed.max_structural_mass ./ sumstats_retrodicted.max_structural_mass
 
 
-let L = hcat(prior_check.losses...),
-    S = hcat(prior_check.samples...),
-    i = 1
-    
-    
-    fin_repro = map(x->x[:repro][end,:cum_repro], prior_check.predictions)
+sim_opt = f.simulator(bestfit(f))
+plt = plot_data()
 
-    plot(
-        scatter(log10.(fin_repro .+ 1), vec(L), xlabel = "∑R", ylabel = "L"), 
-        scatter(S[i,:], vec(L), xlabel = f.prior.labels[i])
-    )
-end
+@df sim_opt[:growth] plot!(:t_day, :S, subplot = 1)
+@df sim_opt[:repro] plot!(:t_day, :cum_repro, subplot = 2)
 
 
 
 
 
-# df = vcat(map(x->x[:growth], posterior_check.predictions)...)
-
-# @df df lineplot(:tday, :H)
-
-# using StatsBase
-# median(vec(f.accepted[4,:]), Weights(f.weights))
-
-# plot(
-#     scatter(hcat(prior_check.samples...)[1,:], prior_check.losses)
-# )
-
-
-let p = [1.4, 0.8, 0.6, 0.05]
-    sim = f.simulator(p)
-    l = f.loss(sim, f.data)
-
-    plt = f.plot_data()
-
-    @df sim[:growth] plot!(:tday, :S, subplot = 1)
-    @df sim[:repro] plot!(:tday, :cum_repro, subplot = 2, title = l)
-end
-
-
-minimum(prior_check.losses)
+#using Optim
+#
+#optfun = EcotoxModelFitting.define_objective_function(f)
+#p0 = mode.(f.prior.dists)
+#
+#lower_bounds = [quantile(d, 0.01) for d in f.prior.dists]
+#upper_bounds = [quantile(d, 0.99) for d in f.prior.dists]
+#ps = ParticleSwarm(lower = lower_bounds, upper = upper_bounds, n_particles = 100)
+#res = optimize(optfun, p0, ps)
+#
+#
+#
+#sim_opt = f.simulator(res.minimizer)
+#plt = plot_data()
+#
+#@df sim_opt[:growth] plot!(:t_day, :S, subplot = 1)
+#@df sim_opt[:repro] plot!(:t_day, :cum_repro, subplot = 2)

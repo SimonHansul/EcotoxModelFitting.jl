@@ -15,19 +15,19 @@ includet("debtest_utils.jl")
 @testset "Fitting to growth data only" begin
     
     data = EcotoxModelFitting.OrderedDict(
-        :growth => load_growth_data()
+        :growth => load_growth_data_azoxy()
     )
 
     function plot_data()
 
-        plt = @df data[:growth] lineplot(:tday, :drymass_mg, lw = 1.5, marker = true, color = :black, leg = false, xlabel = "Time (d)", ylabel = "Dry mass (mg)")
+        plt = @df data[:growth] lineplot(:t_day, :S, lw = 1.5, marker = true, color = :black, leg = false, xlabel = "Time (d)", ylabel = "Dry mass (mg)")
         
         return plt
     end
 
     defaultparams = deepcopy(EcotoxSystems.defaultparams)
 
-    defaultparams.glb.t_max = maximum(data[:growth].tday) + 5
+    defaultparams.glb.t_max = maximum(data[:growth].t_day) + 5
     defaultparams.glb.dX_in = 1e10
 
     defaultparams.spc.X_emb_int = 0.01e-3
@@ -39,10 +39,10 @@ includet("debtest_utils.jl")
         sim = EcotoxSystems.ODE_simulator(p)
 
         # convert simulation time to experimental time
-        sim[!,:tday] = sim.t .- 2 #rand(Uniform(2, 3))
-        sim.tday = ceil.(sim.tday) 
+        sim[!,:t_day] = sim.t .- 2 #rand(Uniform(2, 3))
+        sim.t_day = ceil.(sim.t_day) 
 
-        sim[!,:drymass_mg] = sim.S
+        sim[!,:S] = sim.S
 
         return EcotoxModelFitting.OrderedDict(:growth => sim)
 
@@ -60,10 +60,10 @@ includet("debtest_utils.jl")
         defaultparams = defaultparams, 
         simulator = simulator,
         data = data, 
-        response_vars = [[:drymass_mg]], 
+        response_vars = [[:S]], 
         time_resolved = [true], 
         data_weights = [[1.]], 
-        time_var = :tday, 
+        time_var = :t_day, 
         plot_data = plot_data, 
         loss_functions = EcotoxModelFitting.loss_logmse
     )
@@ -73,17 +73,21 @@ includet("debtest_utils.jl")
     let prior_df = vcat(map(x->x[:growth], prior_check.predictions)...), 
         plt = plot_data()
 
-        @df prior_df lineplot!(:tday, :drymass_mg, lw = 2, fillalpha = .2)
+        @df prior_df lineplot!(:t_day, :S, lw = 2, fillalpha = .2)
     end
-
 
     @time pmcres = run_PMC!(f; n_init = 5_000, n = 5_000, t_max = 10, q_dist = 0.1);
 
     let plt = plot(
             eachindex(pmcres.particles) .- 1, map(minimum, pmcres.particles), 
-            marker = true, lw = 1.5, xlabel = "PMC step", ylabel = "loss", label = "Minimum"
+            marker = true, lw = 1.5, 
+            xlabel = "PMC step", ylabel = "loss", 
+            label = "Minimum"
             )
-        plot!(eachindex(pmcres.particles) .- 1, map(median, pmcres.particles), marker = true, lw = 1.5, label = "Median")
+        plot!(
+            eachindex(pmcres.particles) .- 1, map(median, pmcres.particles), 
+            marker = true, lw = 1.5, label = "Median"
+            )
 
         display(plt)
     end
@@ -93,7 +97,7 @@ includet("debtest_utils.jl")
     let retro_df = vcat(map(x->x[:growth], posterior_check.predictions)...), 
         plt = plot_data()
 
-        @df retro_df lineplot!(:tday, :drymass_mg, lw = 3, fillalpha = .2)
+        @df retro_df lineplot!(:t_day, :S, lw = 3, fillalpha = .2)
 
         display(plt)
     end
