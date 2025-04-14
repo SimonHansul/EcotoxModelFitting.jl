@@ -1,0 +1,73 @@
+#
+# this is an examplatory metadata file in YAML format 
+# the absolute minimum this file should contain is a list of the data keys and explanation of column names (at least those which are also used for model fitting)
+# in general, you can add as much detail information here as desired
+
+description: |
+  Example metadata file, as part of the documentation of EcotoxModelFitting.jl.
+  General context about the experiment can be added here. Other information below.
+
+data_keys
+  - key: growth
+    type: table
+    file: data/growth.csv
+    variables:
+      - name: t_day
+        description: Time in days since onset of experiment
+      - name: carapace_length
+        description: Carapace length in cm, measured digitally using ImageJ
+    info: Animals identified as males are excluded from the dataset
+
+  - key: repro
+    type: table
+    file: data/reproduction.csv
+    variables:
+      - name: t_day
+        description: Time in days since onset of experiment
+      - name: cum_repro
+        description: Cumulative number of produced offspring
+    info: Animals identified as males are excluded from the dataset
+
+  - key: survival
+    type: table
+    file: data/survival.csv
+    variables:
+      - name: t_day
+        description: Time in days since onset of experiment
+      - name: num_survivors
+        description: Number of surviving animals
+      - name: survival
+        description: Fraction of surviving animals
+    info: Animals identified as males are excluded from the dataset
+
+test_organisms:
+  - scientific_name: Daphnia magna # scientific name of the test species
+    lineage: dm1 # indicator of the lineage, if available 
+    sampling_location: 50.82859943884214, 4.63937564264926 # geographical origin, if known
+    sampling_date: null 
+    sampling_info: null # any other info, if availble
+test_substances: # list all test substances which are used in this dataset
+  - cas: 7440-50-8
+    name: Copper
+    product: Copper sulfate
+  - cas: 7440-02-0 
+    name: Nickel 
+    product: null
+  - cas: 7440-66-6 
+    name: Zinc
+    product: null
+
+test_conditions: # information about test conditions
+  temperature:
+    value: 293.15
+    unit: K
+    sd: 1.5
+    n: 10
+  food:
+    value: 0.2
+    unit: mgC/animal/day
+    sd: null
+    n: null
+    source: Pseudokirchneriella subcapitata, harvested at carrying capacity, frozen (-80°C for 2 days) and defrosted at room temperature
+  initial_age: 0- 24 h since hatching
+  test_medium: Modified COMBO with reduced Boron levels
