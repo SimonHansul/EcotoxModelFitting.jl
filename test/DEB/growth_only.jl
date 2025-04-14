@@ -3,7 +3,7 @@ using Pkg; Pkg.activate("test/DEB")
 using EcotoxSystems
 using CSV
 using DataFrames
-using StatsPlots
+using StatsPlots, StatsPlots.Plots.Measures
 using StatsBase
 using Test
 
@@ -12,7 +12,7 @@ using EcotoxModelFitting
 
 includet("debtest_utils.jl")
 
-@testset "Fitting to growth data only" begin
+@testset "Fitting to growth data  using PMC" begin
     
     data = EcotoxModelFitting.OrderedDict(
         :growth => load_growth_data_azoxy()
@@ -50,12 +50,12 @@ includet("debtest_utils.jl")
 
     using Distributions
     prior = Prior(
-        "spc.dI_max" => truncated(Normal(1., 10.), 0, Inf), 
+        "spc.dI_max" => truncated(Normal(1., 100.), 0, Inf), 
         "spc.k_M" => truncated(Normal(0.6, 0.6), 0, Inf),
         "spc.eta_AS" => truncated(Normal(0.5, 0.5), 0, 1)
     )
 
-    f = ModelFit(
+    global f = ModelFit(
         prior = prior,
         defaultparams = defaultparams, 
         simulator = simulator,
@@ -76,7 +76,13 @@ includet("debtest_utils.jl")
         @df prior_df lineplot!(:t_day, :S, lw = 2, fillalpha = .2)
     end
 
-    @time pmcres = run_PMC!(f; n_init = 5_000, n = 5_000, t_max = 10, q_dist = 0.1);
+    @time global pmcres = run_PMC!(
+        f; 
+        n_init = 50_000, 
+        n = 25_000, 
+        t_max = 3, 
+        q_dist = 0.05
+        );
 
     let plt = plot(
             eachindex(pmcres.particles) .- 1, map(minimum, pmcres.particles), 
@@ -107,4 +113,43 @@ includet("debtest_utils.jl")
     sim_opt = f.simulator(p_opt)
     @test f.loss(sim_opt, f.data) < 1
   
+end
+
+
+let min_loss_idx = [argmin(vec(d)) for d in pmcres.losses]
+    bestfits = hcat([p[:,min_loss_idx[i]] for (i,p) in enumerate(pmcres.particles)]...)'
+    
+    x = eachindex(min_loss_idx) .- 1
+
+    p1 = plot(
+        x, bestfits, layout = (1,length(f.prior.dists)), leg = false, marker = true, size = (1000,350), 
+        title = hcat(f.prior.labels...), 
+        xlabel = "PMC step", 
+        ylabel = hcat(vcat("Estimate", repeat([""], length(f.prior.dists)-1))...), 
+        leftmargin = 7.5mm, bottommargin = 7.5mm
+        )
+
+    p2 = plot(x, [minimum(l) for l in pmcres.losses], label = "Minimum", marker = true, xlabel = "PMC step", ylabel = "Loss")
+    plot!(x, median.(pmcres.losses), label = "Median", marker = true)
+
+    plot(p1, p2)
+
+end
+
+
+
+
+pmcres.particles[4][:,min_loss_idx[4]]
+
+
+
+pmcres.dists
+
+
+EcotoxModelFitting.run_optim!(f)
+
+@testset "Fitting to growth data only using Nelder-Mead" begin
+
+    
+    
 end

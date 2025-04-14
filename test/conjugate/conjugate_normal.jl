@@ -2,6 +2,8 @@ using KernelDensity
 using Distances
 using Distributions
 using StatsPlots
+using Random, StatsBase
+using DataStructures, DataFrames
 
 @testset "Validate PMC with Normal-Normal conjugate prior" begin
     n = 20
@@ -58,11 +60,13 @@ using StatsPlots
     posterior_mean_pmc = mean(f.accepted, Weights(f.weights))
     posterior_var_pmc = var(f.accepted, Weights(f.weights))
 
-    relerr(a, b) = a/((a+b)/2)
+    reldev(a, b) = a/((a+b)/2) # compute relative deviation (value of 1 == perfect agreement)
 
+    err_posterior_mean = reldev(posterior_mean_pmc, posterior_mean)
+    err_posterior_var = reldev(posterior_var_pmc, posterior_var)
 
-    err_posterior_mean = relerr(posterior_mean_pmc, posterior_mean)
-    err_posterior_var = relerr(posterior_var_pmc, posterior_var)
+    @info "Relative deviation in estimation of posterior mean: $(err_posterior_mean)"
+    @info "Relative deviation in estimation of posterior variance: $(err_posterior_var)"
 
     @test 0.95 <= err_posterior_mean <= 1.05
     @test 0.95 <= err_posterior_var <= 1.05
