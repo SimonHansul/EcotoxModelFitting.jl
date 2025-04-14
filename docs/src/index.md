@@ -45,7 +45,7 @@ On disc, it is best to store all files which make up a dataset in a dedicated su
 ```bash
 myproject # project directory
     data # sub-directory containing all data related to the project
-        exp_raw # sub-directory containing raw experimental data
+        exp_raw # sub-directory containing raw experimental data (as opposed to simulation output etc.)
             experiment1
                 growth.csv # measured growth over time
                 repro.csv # measured reproduction over time
@@ -64,8 +64,7 @@ We recommend to stick to this organizational format, even if a dataset contains 
 This format is also compatible with data management systems like [datalad](https://www.datalad.org/). <br>
 Note that in the example above, each dataset also contains a `meta.yml` file. <br>
 This file contains all the metadata pertinent to the dataset. 
-An example is given in the examples subdirectory on Github. <br>
-
+An example is given in the [examples subdirectory](https://github.com/SimonHansul/EcotoxModelFitting.jl/tree/main/examples/data/dataset_template). <br>
 
 ### Tidy data frames
 We assume each `DataFrame` to be organized in tidy format *sensu* Wickham, see the [corresponding publication](https://www.jstatsoft.org/article/view/v059i10/). <br><br>
@@ -88,4 +87,15 @@ df_end = @subset(df, :t_day .== (maximum(:t_day )), :treatment .== "control")
 to select the final time-point of the control in the dataframe `df`, assuming that `df` has a column `t_day` indicating time and `treatment` encoding the treatment. <br><br>
 
 
+### Compatability with other modelling software 
+
+Some modelling tools, particularly those developed in MATLAB, assume a column-oriented format. <br>
+To begin with, this makes the format assumed by `EcotoxModelFitting.jl` incompatible with that of some other tools. <br>
+I nevertheless believe that it is a good idea to store data following tidy data principles, 
+even if you end up using a software tool which requires a column-oriented format. <br>
+There are multiple reasons for this, but my main reason is that, if your data is in tidy format to begin with, 
+it is relatively easy to bring it into any reasonable format using [reshaping operations](https://dataframes.juliadata.org/stable/man/reshaping_and_pivoting/). <br>
+In my experience, performing the inverse transformation is much more cumbersome and, 
+most importantly, requires more manual data manipulation. 
+This is time-consuming, error-prone and not reproducible.
 
