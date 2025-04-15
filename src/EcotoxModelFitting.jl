@@ -29,6 +29,7 @@ include("prior_heuristics.jl")
 export calc_prior_dI_max, calc_prior_k_M
 include("modelfit.jl")
 include("loss_functions.jl") 
+export loss_mse_logtransform, loss_logmse
 include("loss_generation.jl") 
 
 """
