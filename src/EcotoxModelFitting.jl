@@ -18,12 +18,15 @@ import Base:show
 
 include("utils.jl")
 
-export ModelFit, run_PMC!, Prior, update_data_weights!, generate_fitting_simulator, generate_loss_function, rand, posterior_sample, posterior_sample!, bestfit, generate_posterior_summary, posterior_predictions, assign_value_by_label!, assign_values_from_file!
+export ModelFit, run_PMC!, update_data_weights!, generate_fitting_simulator, generate_loss_function, rand, posterior_sample, posterior_sample!, bestfit, generate_posterior_summary, posterior_predictions, assign_value_by_label!, assign_values_from_file!
 
 # reserved column names for the posterior -> cannot be used as parameter names
 const RESERVED_COLNAMES = ["loss", "weight", "model", "chain"]
 
 include("priors.jl")
+export Prior
+include("prior_heuristics.jl")
+export calc_prior_dI_max, calc_prior_k_M
 include("modelfit.jl")
 include("loss_functions.jl") 
 include("loss_generation.jl") 

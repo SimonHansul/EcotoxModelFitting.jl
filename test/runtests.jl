@@ -1,10 +1,3 @@
-using Pkg; Pkg.activate("test")
-
-using Test
-
-using Revise
-using EcotoxModelFitting
-
 include("conjugate/conjugate_normal.jl") # example using conjugate normal
 
 include("DEB/growth_only.jl")

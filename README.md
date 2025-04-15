@@ -22,3 +22,8 @@ For simple fitting problems (e.g. a single endpoint over time), this pacakge is 
 - Updated exports
 - Implemented `exceptions`-argument in `assign_values_from_file!`
 - Implemented option to add weights for individual observations by providing an `observation_weights` column in the data files
+
+
+### v0.1.3 
+
+- Added prior heuristics for `dI_max` and `k_M`

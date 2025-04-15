@@ -101,13 +101,24 @@ includet("debtest_utils.jl")
 
     end
 
-    prior = Prior(
-        "spc.dI_max" => truncated(Normal(12., 12.), 0, Inf), #truncated(Normal(1., 10.), 0, Inf), 
-        "spc.kappa" => truncated(Normal(0.8, 0.8), 0, 1),
-        "spc.eta_AS" => truncated(Normal(0.5, 0.5), 0, 1), 
-        "spc.H_p" => truncated(Normal(100, 100), 0, Inf)
-        )
     
+    S_max_emp = maximum(data[:growth].S)
+
+    prior_dI_max = calc_prior_dI_max(S_max_emp)
+    prior_k_M = calc_prior_k_M(
+        S_max_emp,
+        defaultparams.spc.kappa,
+        mode(prior_dI_max), 
+        defaultparams.spc.eta_IA
+    )
+
+    prior = Prior(
+        "spc.dI_max" => prior_dI_max, 
+        "spc.k_M" => prior_k_M,
+        "spc.eta_AS" => truncated(Normal(0.5, 0.5), 0, 1),
+        "spc.kappa" => truncated(Normal(0.539, 0.539), 0, 1),
+        "spc.H_p" => truncated(Normal(100, 100), 0, Inf)
+    )    
 
     global f = ModelFit(
         prior = prior,
@@ -147,10 +158,10 @@ includet("debtest_utils.jl")
 
     @time pmcres = run_PMC!(
         f; 
-        n_init = 10_000, 
-        n = 10_000, 
-        t_max = 5, 
-        q_dist = 0.1
+        n_init = 50_000, 
+        n = 50_000, 
+        t_max = 5,
+        q_dist = 0.02
         );
 
     begin
@@ -174,7 +185,7 @@ includet("debtest_utils.jl")
         @df retro_repro lineplot!(plt, :t_day, :cum_repro, lw = 3, fillalpha = .2, subplot = 2)
 
         @df sim_opt[:growth] lineplot!(plt, :t_day, :drymass_mg, subplot = 1, lw = 3, label = "Best fit")
-        @df sim_opt[:repro] lineplot!(plt, :t_day, :cum_repro, subplot = 2)
+        @df sim_opt[:repro] lineplot!(plt, :t_day, :cum_repro, subplot = 2, lw = 3)
 
         display(plt)
     end
@@ -184,19 +195,19 @@ includet("debtest_utils.jl")
   
 end
 
-posterior_check = posterior_predictions(f, 1000);
-
-sumstats_observed = extract_sumstats_azoxy(f.data)
-sumstats_retrodicted = extract_sumstats_azoxy(posterior_check.predictions)
-
-reldiff_max_structural_mass = sumstats_observed.max_structural_mass ./ sumstats_retrodicted.max_structural_mass
-
-
-sim_opt = f.simulator(bestfit(f))
-plt = plot_data()
-
-@df sim_opt[:growth] plot!(:t_day, :S, subplot = 1)
-@df sim_opt[:repro] plot!(:t_day, :cum_repro, subplot = 2)
+#posterior_check = posterior_predictions(f, 1000);
+#
+#sumstats_observed = extract_sumstats_azoxy(f.data)
+#sumstats_retrodicted = extract_sumstats_azoxy(posterior_check.predictions)
+#
+#reldiff_max_structural_mass = sumstats_observed.max_structural_mass ./ sumstats_retrodicted.max_structural_mass
+#
+#
+#sim_opt = f.simulator(bestfit(f))
+#plt = plot_data()
+#
+#@df sim_opt[:growth] plot!(:t_day, :S, subplot = 1)
+#@df sim_opt[:repro] plot!(:t_day, :cum_repro, subplot = 2)
 
 
 
