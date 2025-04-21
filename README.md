@@ -27,3 +27,7 @@ For simple fitting problems (e.g. a single endpoint over time), this pacakge is 
 ### v0.1.3 
 
 - Added prior heuristics for `dI_max` and `k_M`
+
+### v0.1.4
+
+- Added DrWatson as dependency
