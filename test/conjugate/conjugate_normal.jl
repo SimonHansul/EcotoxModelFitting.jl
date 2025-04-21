@@ -1,7 +1,15 @@
-using KernelDensity
-using Distances
+using Pkg; Pkg.activate("test")
+
+using Test
+#using KernelDensity
+#using Distances
 using Distributions
 using StatsPlots
+using DataStructures, DataFrames, DataFramesMeta
+using Random, StatsBase
+
+using Revise
+using EcotoxModelFitting
 
 @testset "Validate PMC with Normal-Normal conjugate prior" begin
     n = 20

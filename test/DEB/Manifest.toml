@@ -1,8 +1,8 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.1"
+julia_version = "1.11.0"
 manifest_format = "2.0"
-project_hash = "892e4695fb5105a55eba9f3fb5e17832a7e43e7b"
+project_hash = "0f96bb249a3fda468ffb601b8bb0503a8c5d58e7"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"
@@ -561,7 +561,7 @@ version = "1.6.0"
 deps = ["ComponentArrays", "DataFrames", "DataFramesMeta", "DataStructures", "Distributions", "LaTeXStrings", "ProgressMeter", "StatsBase"]
 path = "../.."
 uuid = "11baf4a3-28f5-4d66-8f46-d015c3f5447c"
-version = "0.1.1"
+version = "0.1.2"
 
 [[deps.EcotoxSystems]]
 deps = ["ComponentArrays", "DataFrames", "Distributions", "OrdinaryDiffEq", "Parameters", "PrecompileTools", "Random", "RecipesBase", "StaticArrays", "StatsBase"]
