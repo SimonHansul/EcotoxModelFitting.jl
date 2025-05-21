@@ -165,7 +165,12 @@ function setindex!(prior::Prior, value::Union{Distribution,Hyperdist}, param::Un
 end
 
 
-
 function rand(prior::Prior)
     return [rand(p) for p in prior.dists]
+end
+
+
+
+function deftruncnorm(x, cv; l = 0, u = Inf)
+    return truncated(Normal(x, cv*x), l, u)
 end

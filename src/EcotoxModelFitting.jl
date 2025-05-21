@@ -25,7 +25,7 @@ export ModelFit, run_PMC!, update_data_weights!, generate_fitting_simulator, gen
 const RESERVED_COLNAMES = ["loss", "weight", "model", "chain"]
 
 include("priors.jl")
-export Prior
+export Prior, deftruncnorm
 
 include("prior_heuristics.jl")
 export calc_prior_dI_max, calc_prior_k_M
