@@ -71,9 +71,11 @@ function run_PMC!(
     n_init::Union{Nothing,Int} = nothing,
     q_dist::Float64 = .1,
     t_max = 3,
-    savedir::Union{Nothing,String} = nothing,
+    evals_per_sample::Int64 = 1,
+    savetag::Union{Nothing,String} = nothing,
     continue_from::Union{Nothing,String} = nothing,
-    paramlabels::Union{Nothing,AbstractDict} = nothing
+    paramlabels::Union{Nothing,AbstractDict} = nothing,
+    #accepted_parents::Union{Nothing,DataFrame} = nothing
     )::NamedTuple
 
     t = 0
@@ -91,11 +93,11 @@ function run_PMC!(
         n_init = n
     end
 
-    if !isnothing(savedir)
-        @info "Saving results to $(savedir)"
+    if !isnothing(savetag)
+        @info "Saving results to $(datadir("sims", savetag))"
 
-        if !isdir(savedir)
-            mkdir(savedir)
+        if !isdir(datadir("sims", savetag))
+            mkdir(datadir("sims", savetag))
         end
     end
     
@@ -108,15 +110,18 @@ function run_PMC!(
                 @info "#### ---- Evaluating $n_init initial samples on $(Threads.nthreads()) threads ---- ####"
                 
                 particles = Vector{Vector{Float64}}(undef, n_init)
-                weights = fill(1/n, n_init)
+                weights = fill(1/n_init, n_init)
                 losses = Vector{Union{Float64,Vector{Float64}}}(undef, n_init)
-                
+
                 @showprogress @threads for i in 1:n_init
-                    θ = rand.(f.prior.dists)
-                    sim = f.simulator(θ)
-                    L = dist(f.data, sim)
+                    θ = rand.(f.prior.dists) # take a prior sample
+                    L = 0. # initialize loss for this sample
+                    for eval in 1:evals_per_sample
+                        sim = f.simulator(θ) # run the simulation
+                        L += dist(f.data, sim) # add up losses
+                    end
                     particles[i] = θ
-                    losses[i] = L
+                    losses[i] = L/evals_per_sample # average the losses retrieved from repeated simulations
                 end
                 
                 particles = hcat(particles...)
@@ -147,8 +152,8 @@ function run_PMC!(
                 push!(all_thresholds, threshold)
 
                 # save data to checkpoint
-                if !(isnothing(savedir))
-                    save(datadir("sims", savedir, "checkpoint.jld2"), Dict(
+                if !(isnothing(savetag))
+                    save(joinpath(savedir, "checkpoint.jld2"), Dict(
                         "particles" => all_particles, 
                         "weights" => all_weights, 
                         "losses" => all_losses,
@@ -179,6 +184,7 @@ function run_PMC!(
             old_particles = all_particles[end]
             old_weights = all_weights[end]
             old_vars = all_vars[end]
+            old_vars = max.(1e-100, old_vars)
             
             particles = Vector{Vector{Float64}}(undef, n)
             weights = fill(1/n, n)
@@ -211,14 +217,19 @@ function run_PMC!(
                     weight_denom += ω_j * ϕ
                 end
 
+                # using log-weights often stabilizes the posterior
                 ω = log((weight_num/weight_denom) + 1)
 
-                sim = f.simulator(θ_i) # run simulations
-                ρ = dist(f.data, sim) # calculate distance (loss)
+                # run the simulations
+                L = 0.
+                for eval in 1:evals_per_sample
+                    sim = f.simulator(θ_i)
+                    L += dist(f.data, sim) # generate ρ(x,y)
+                end
 
                 particles[i] = θ_i
                 weights[i] = ω
-                losses[i] = ρ
+                losses[i] = L/evals_per_sample
             end
 
             particles = hcat(particles...)
@@ -245,7 +256,7 @@ function run_PMC!(
             push!(all_vars, vars)
             
             # save data to checkpoint
-            if !(isnothing(savedir))
+            if !(isnothing(savetag))
                 save(joinpath(savedir, "checkpoint.jld2"), Dict(
                     "particles" => all_particles, 
                     "weights" => all_weights, 
@@ -263,33 +274,39 @@ function run_PMC!(
         end
     end
 
-    f.accepted = all_particles[end]
+
+    f.samples = all_particles[end]
     f.weights = all_weights[end]
     f.losses = all_losses[end]
     
-    if !isnothing(savedir)
-        @info "Saving results to $(datadir("sims", savedir))"
+    if !isnothing(savetag)
+        @info "Saving results to $(datadir("sims", savetag))"
     
-        accepted = DataFrame(f.accepted', f.prior.labels)
-        accepted[!,:weight] .= f.weights
-        accepted[!,:loss] = vcat(f.losses...)
+        samples = DataFrame(f.samples', f.prior.labels)
+        samples[!,:weight] .= f.weights
+        samples[!,:loss] = vcat(f.losses...)
         
-        settings = DataFrame(n = n, q_dist = q_dist, t_max = t_max)
+        settings = DataFrame(n = n, q_dist = q_dist, t_max = t_max, priors = f.prior.dists)
 
-        CSV.write(joinpath(savedir, "samples.csv"), accepted)
+        CSV.write(joinpath(savedir, "samples.csv"), samples)
         CSV.write(joinpath(savedir, "settings.csv"), settings)
 
+        priors_df = DataFrame(
+            param = f.prior.labels, 
+            dist = f.prior.dists
+        )
+        CSV.write(joinpath(savedir, "priors.csv"), priors_df)
+
         # saving posterior summary to csv + tex  
-        posterior_summary = generate_posterior_summary(
-            f.accepted, 
+        _ = generate_posterior_summary(
+            f.prior.labels,
+            f.samples, 
             f.losses, 
             f.weights;
-            tex = !isnothing(savedir),
-            paramlabels = paramlabels,
-            savedir = savedir
+            tex = !isnothing(savetag),
+            savetag = savetag,
+            paramlabels = paramlabels
             )
-
-        CSV.write(joinpath("posterior_summary.csv"), posterior_summary)
 
     end
 

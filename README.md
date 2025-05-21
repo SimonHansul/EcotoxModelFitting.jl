@@ -35,3 +35,7 @@ For simple fitting problems (e.g. a single endpoint over time), this pacakge is 
 
 - Organized source files
 - Removed DrWatson as dependency
+
+### v0.1.6
+
+- Added `evals_per_sample` argument to `run_PMC!`
