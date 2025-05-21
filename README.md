@@ -14,8 +14,16 @@ By design, `EcotoxModelFitting.jl` assumes that data is organized in [tidy forma
 For simple fitting problems (e.g. a single endpoint over time), this pacakge is probably overkill, and one could as well use one of the many parameter inference/optimization packages available for Julia, e.g. Turing.jl, ApproxBayes.jl, Optim.jl.
 
 
-## Changelog
+## TODOs
 
+- [ ] Unit tests
+- [ ] Implement standard Bayesian inference with MCMC for standard examples
+- [ ] Implement convenience functions for standard (chronic) tox data
+    - [ ] Daphnia reproduction (OECD 211)
+    - [ ] Collembola reproduction? (OECD 232)
+    - [ ] Algal growth? (OECD 201)
+
+## Changelog
 
 ### v0.1.2
 
@@ -31,3 +39,13 @@ For simple fitting problems (e.g. a single endpoint over time), this pacakge is 
 ### v0.1.4
 
 - Added DrWatson as dependency
+
+### v0.1.5
+
+- Organized source files
+- Removed DrWatson as dependency
+
+### v0.1.6
+
+- Added `evals_per_sample` argument to `run_PMC!`
+- Minor bugfixes

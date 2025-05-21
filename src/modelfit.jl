@@ -119,12 +119,6 @@ mutable struct ModelFit
     end
 end
 
-function emptyplot()
-
-    return plot()
-
-end
-
 
 function normalize_observation_weights!(data::AbstractDict)::Nothing
 
