@@ -275,14 +275,14 @@ function run_PMC!(
     end
 
 
-    f.samples = all_particles[end]
+    f.accepted = all_particles[end]
     f.weights = all_weights[end]
     f.losses = all_losses[end]
     
     if !isnothing(savetag)
         @info "Saving results to $(datadir("sims", savetag))"
     
-        samples = DataFrame(f.samples', f.prior.labels)
+        samples = DataFrame(f.accepted', f.prior.labels)
         samples[!,:weight] .= f.weights
         samples[!,:loss] = vcat(f.losses...)
         
@@ -300,7 +300,7 @@ function run_PMC!(
         # saving posterior summary to csv + tex  
         _ = generate_posterior_summary(
             f.prior.labels,
-            f.samples, 
+            f.accepted, 
             f.losses, 
             f.weights;
             tex = !isnothing(savetag),
