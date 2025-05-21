@@ -16,7 +16,6 @@ For simple fitting problems (e.g. a single endpoint over time), this pacakge is 
 
 ## Changelog
 
-
 ### v0.1.2
 
 - Updated exports
@@ -31,3 +30,8 @@ For simple fitting problems (e.g. a single endpoint over time), this pacakge is 
 ### v0.1.4
 
 - Added DrWatson as dependency
+
+### v0.1.5
+
+- Organized source files
+- Removed DrWatson as dependency
