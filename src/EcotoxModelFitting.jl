@@ -6,7 +6,7 @@ using DataStructures
 using StatsBase
 using ComponentArrays
 using LaTeXStrings
-
+using Requires
 
 #using Setfield
 using Base.Threads
@@ -47,9 +47,5 @@ export generate_posterior_summary, bestfit
 
 include("populationmontecarlo.jl")
 export run_PMC!
-
-
-
-
 
 end # module EcotoxModelFitting

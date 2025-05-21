@@ -58,7 +58,7 @@ using EcotoxModelFitting
         plot_data = plot_data
     )
 
-    pmcres = run_PMC!(f; n = 100_000, t_max = 3, q_dist = 0.05)
+    pmcres = run_PMC!(f; n = 100_000, t_max = 3, q_dist = 0.01)
 
     posterior_mean
     posterior_var
@@ -68,9 +68,11 @@ using EcotoxModelFitting
 
     relerr(a, b) = a/((a+b)/2)
 
-
     err_posterior_mean = relerr(posterior_mean_pmc, posterior_mean)
     err_posterior_var = relerr(posterior_var_pmc, posterior_var)
+
+    @info "Error on posterior mean: $(round(err_posterior_mean, sigdigits = 4))"
+    @info "Error on posterior variance: $(round(err_posterior_var, sigdigits = 4))"
 
     @test 0.95 <= err_posterior_mean <= 1.05
     @test 0.95 <= err_posterior_var <= 1.05
