@@ -48,5 +48,5 @@ end
 
 # dispatches to Matrix method
 function posterior_sample(f::ModelFit)
-    return posterior_sample(f.samples, f.weights)
+    return posterior_sample(f.accepted, f.weights)
 end
