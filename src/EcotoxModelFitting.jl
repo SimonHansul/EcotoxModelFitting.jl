@@ -48,4 +48,7 @@ export generate_posterior_summary, bestfit
 include("populationmontecarlo.jl")
 export run_PMC!
 
+incude("assign.jl")
+export assign_values_from_file!
+
 end # module EcotoxModelFitting
