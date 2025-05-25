@@ -6,7 +6,6 @@ using DataStructures
 using StatsBase
 using ComponentArrays
 using LaTeXStrings
-using Requires
 
 #using Setfield
 using Base.Threads
