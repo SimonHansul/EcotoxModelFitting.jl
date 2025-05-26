@@ -5,7 +5,7 @@ using ProgressMeter
 using DataStructures
 using StatsBase
 using ComponentArrays
-using LaTeXStrings
+using LaTeXStrings, Latexify
 using JLD2
 using CSV
 
