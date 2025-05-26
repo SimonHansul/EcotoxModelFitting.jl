@@ -306,6 +306,7 @@ function run_PMC!(
         _ = generate_posterior_summary(
             f;
             tex = !isnothing(savetag),
+            savedir = savedir,
             savetag = savetag,
             paramlabels = paramlabels
             )
