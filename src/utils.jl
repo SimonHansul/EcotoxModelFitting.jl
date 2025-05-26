@@ -15,17 +15,23 @@ function fround(x; sigdigits=2)
 end
 
 
-function df_to_tex(df::AbstractDataFrame, fname::AbstractString; colnames::Union{Nothing,Vector{AbstractString}} = nothing)::Nothing
+function df_to_tex(
+    df::AbstractDataFrame, 
+    fname::AbstractString; 
+    colnames::Union{Nothing,Vector{AbstractString}} = nothing
+    )::Nothing
 
     tex_table = df |>
         x -> !isnothing(colnames) ? rename(x, colnames) : x |> 
-        x -> latexify(x, env = :table, booktabs = true, latex = false, fmt = FancyNumberFormatter(3))   
+        x -> latexify(x, env = :table, booktabs = true, latex = false, fmt = FancyNumberFormatter(3)
+        )   
 
+    @info "Writing latex table to $fname"
+    
     open(fname, "w") do f
         write(f, tex_table)
     end
 
-    @info "Writing latex table to $fname"
 
     return nothing
 end
