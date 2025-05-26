@@ -21,12 +21,11 @@ function df_to_tex(
     colnames::Union{Nothing,Vector{AbstractString}} = nothing
     )::Nothing
 
-    tex_table = df |>
-        x -> !isnothing(colnames) ? rename(x, colnames) : x |> 
-        x -> latexify(
-            x, 
-            env = :table, booktabs = true, latex = false, fmt = FancyNumberFormatter(3)
-        )   
+    tex_table = (
+        (!isnothing(colnames) ? rename(df, colnames) : df)
+        |> x -> latexify(x, env = :table, booktabs = true, latex = false, fmt = FancyNumberFormatter(3))
+    )
+
 
     @info "Writing latex table to $fname"
     
