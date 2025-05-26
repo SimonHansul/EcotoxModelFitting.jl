@@ -1,5 +1,3 @@
-
-
 """
     fround(x; sigdigits=2)
 Formatted rounding to significant digits (omitting decimal point when appropriate). 
@@ -39,7 +37,9 @@ end
 
 
 """
-Convert parameter object to table (`DataFrame`).
+    as_table(p::ComponentArray; printtable = true)
+
+Convert parameter object to table.
 """
 function as_table(p::ComponentArray; printtable = true)
 
