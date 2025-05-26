@@ -1,38 +1,42 @@
 
 """
     generate_posterior_summary(
-        particles::Matrix{Float64}, 
-        losses::Matrix{Float64}, 
-        weights::Vector{Float64}; 
+        f::ModelFit; 
         tex = false,
-        paramlabels::Union{Nothing,Dict} = nothing,
+        paramlabels::Union{Nothing,AbstractDict} = nothing,
         savetag::Union{Nothing,String} = nothing
-        )::DataFrame
+    )::DataFrame
 
 Generate summary of marginal posterior distributions. 
 
-For `tex=true`, the result will aditionaly be converted to LaTeX and saved as `posterior_summary.tex` within the `savetag` directory. 
+## Arguments 
+
+- `f`: A `ModelFit` object with PMC results. `
+- `tex`: Indication of whether summary should be saved as `posterior_summary.tex` within the `savetag` directory. 
 This option asssumes that DrWatson is in use and the datadir() function is defined.
 If no `savetag` is provided, `tex=true` will be ignored.
 """
 function generate_posterior_summary(
-    particles::Matrix{Float64}, 
-    losses::Matrix{Float64}, 
-    weights::Vector{Float64}; 
+    f::ModelFit; 
     tex = false,
     paramlabels::Union{Nothing,AbstractDict} = nothing,
+    savedir::Union{Nothing,String} = nothing,
     savetag::Union{Nothing,String} = nothing
     )::DataFrame
+
+    if !isnothing(savetag)
+        @assert !isnothing(savedir) "If savetag is provided, savedir is needed too."
+    end
 
     if tex & isnothing(savetag)
         tex = false
         "No savetag provided, ignoring tex=true"
     end
         
-    best_fit = particles[:,argmin(vec(losses))]
-    medians = mapslices(x -> median(x, Weights(weights)), particles, dims = 2) |> vec
-    q05 = mapslices(x -> quantile(x, Weights(weights), 0.05), particles, dims=2) |> vec
-    q95 = mapslices(x -> quantile(x, Weights(weights), 0.95), particles, dims=2) |> vec
+    best_fit = f.accepted[:,argmin(vec(f.losses))]
+    medians = mapslices(x -> median(x, f.weights(f.weights)), f.accepted, dims = 2) |> vec
+    q05 = mapslices(x -> quantile(x, f.weights(f.weights), 0.05), f.accepted, dims=2) |> vec
+    q95 = mapslices(x -> quantile(x, f.weights(f.weights), 0.95), f.accepted, dims=2) |> vec
 
     posterior_summary = DataFrame(
         param = f.prior.labels,
@@ -52,7 +56,7 @@ function generate_posterior_summary(
     end
 
     if !isnothing(savetag)
-        CSV.write(datadir("sims", savetag, "posterior_summary.csv"), posterior_summary)
+        CSV.write(joinpath(savedir, savetag, "posterior_summary.csv"), posterior_summary)
     end
 
     return posterior_summary
