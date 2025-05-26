@@ -7,6 +7,7 @@ using StatsBase
 using ComponentArrays
 using LaTeXStrings
 using JLD2
+using CSV
 
 #using Setfield
 using Base.Threads
@@ -14,7 +15,6 @@ import Base: rand
 import Base: getindex
 import Base: setindex!
 import Base:show
-
 
 include("utils.jl")
 
