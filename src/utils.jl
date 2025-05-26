@@ -23,7 +23,9 @@ function df_to_tex(
 
     tex_table = df |>
         x -> !isnothing(colnames) ? rename(x, colnames) : x |> 
-        x -> latexify(x, env = :table, booktabs = true, latex = false, fmt = FancyNumberFormatter(3)
+        x -> latexify(
+            x, 
+            env = :table, booktabs = true, latex = false, fmt = FancyNumberFormatter(3)
         )   
 
     @info "Writing latex table to $fname"
