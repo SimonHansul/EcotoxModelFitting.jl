@@ -13,8 +13,9 @@ Generate summary of marginal posterior distributions.
 
 - `f`: A `ModelFit` object with PMC results. `
 - `tex`: Indication of whether summary should be saved as `posterior_summary.tex` within the `savetag` directory. 
-This option asssumes that DrWatson is in use and the datadir() function is defined.
+
 If no `savetag` is provided, `tex=true` will be ignored.
+If a `savetag` is provided, 
 """
 function generate_posterior_summary(
     f::ModelFit; 
@@ -51,7 +52,7 @@ function generate_posterior_summary(
         if !isnothing(paramlabels)
             parnames = [paramlabels[p] for p in f.prior.labels]
             tex_df = @transform(posterior_summary, :param = parnames)
-            df_to_tex(tex_df, datadir("sims", savetag, "posterior_summary.tex"), colnames = ["Parameter", "Best fit", "Median", L"$P_{05}$", L"$P_{95}$"])
+            df_to_tex(tex_df, joinpath(savedir, savetag, "posterior_summary.tex"), colnames = ["Parameter", "Best fit", "Median", L"$P_{05}$", L"$P_{95}$"])
         end
     end
 
