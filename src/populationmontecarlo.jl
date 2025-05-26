@@ -304,7 +304,6 @@ function run_PMC!(
 
         # saving posterior summary to csv + tex  
         _ = generate_posterior_summary(
-            f.prior.labels,
             f.accepted, 
             f.losses, 
             f.weights;
