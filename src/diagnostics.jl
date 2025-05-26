@@ -34,9 +34,9 @@ function generate_posterior_summary(
     end
         
     best_fit = f.accepted[:,argmin(vec(f.losses))]
-    medians = mapslices(x -> median(x, f.weights(f.weights)), f.accepted, dims = 2) |> vec
-    q05 = mapslices(x -> quantile(x, f.weights(f.weights), 0.05), f.accepted, dims=2) |> vec
-    q95 = mapslices(x -> quantile(x, f.weights(f.weights), 0.95), f.accepted, dims=2) |> vec
+    medians = mapslices(x -> median(x, Weights(f.weights)), f.accepted, dims = 2) |> vec
+    q05 = mapslices(x -> quantile(x, Weights(f.weights), 0.05), f.accepted, dims=2) |> vec
+    q95 = mapslices(x -> quantile(x, Weights(f.weights), 0.95), f.accepted, dims=2) |> vec
 
     posterior_summary = DataFrame(
         param = f.prior.labels,
