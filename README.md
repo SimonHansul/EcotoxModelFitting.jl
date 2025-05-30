@@ -22,6 +22,7 @@ For simple fitting problems (e.g. a single endpoint over time), this pacakge is 
     - [ ] Daphnia reproduction (OECD 211)
     - [ ] Collembola reproduction? (OECD 232)
     - [ ] Algal growth? (OECD 201)
+- [ ] Move metadata handling to its own mini-pacakge
 
 ## Changelog
 
