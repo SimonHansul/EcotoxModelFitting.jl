@@ -222,8 +222,8 @@ function run_PMC!(
                 # FIXME: 
                 # log-transformation of weights distorts the posterior 
                 # this wasintroduced as a hotfix because we keep running into convergence issues for complex models if we use the "normal weights"
-                ω = log((weight_num/weight_denom) + 1)
-                #ω = (weight_num/weight_denom)
+                #ω = log((weight_num/weight_denom) + 1)
+                ω = (weight_num/weight_denom)
 
                 # run the simulations
                 L = 0.

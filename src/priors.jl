@@ -164,6 +164,25 @@ function setindex!(prior::Prior, value::Union{Distribution,Hyperdist}, param::Un
 
 end
 
+function add_param!(prior::Prior, pair::Pair)
+
+    scaled_dist, μ, σ = scaledist(pair.second)
+
+    push!(prior.labels, pair.first)
+    push!(prior.dists, pair.second)
+    push!(prior.scaled_dists, scaled_dist)
+    push!(prior.μs, μ)
+    push!(prior.σs, σ)
+
+    if typeof(pair.second) != Hyperdist
+        push!(prior.is_hyper, false)
+    else
+        push!(prior.gendists, pair.second.gendist)
+        push!(prior.is_hyper, true)
+    end
+
+end
+
 
 function rand(prior::Prior)
     return [rand(p) for p in prior.dists]

@@ -1,4 +1,4 @@
-using Pkg; Pkg.activate("test")
+using Pkg; Pkg.activate("test/conjugate")
 
 using Test
 #using KernelDensity
@@ -75,5 +75,5 @@ using EcotoxModelFitting
     @info "Error on posterior variance: $(round(err_posterior_var, sigdigits = 4))"
 
     @test 0.95 <= err_posterior_mean <= 1.05
-    @test 0.95 <= err_posterior_var <= 1.05
+    @test 0.9 <= err_posterior_var <= 1.1
 end

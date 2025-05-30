@@ -23,6 +23,7 @@ For simple fitting problems (e.g. a single endpoint over time), this pacakge is 
     - [ ] Collembola reproduction? (OECD 232)
     - [ ] Algal growth? (OECD 201)
 - [ ] Move metadata handling to its own mini-pacakge
+- [ ] Move everything to do with PMC to its own mini-package -> EcotoxModelFitting.jl should be algorithm-agnostic
 
 ## Changelog
 

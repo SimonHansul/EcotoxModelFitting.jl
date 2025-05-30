@@ -29,6 +29,15 @@ function loss_mse_logtransform(a::Vector{Float64}, b::Vector{Float64}, weight = 
     return missing_values_penalty(nominal_length, length(b)) * sum(weight .* (log.(a .+ 1) .- log.(b .+ 1)).^2)/length(a)
 end
 
+function loss_euclidean(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_length = length(b))::Float64
+    return missing_values_penalty(nominal_length, length(b)) * sqrt(sum(weight .* (a .- b).^2))
+end
+
+function loss_euclidean_logtransform(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_length = length(b))::Float64
+    return missing_values_penalty(nominal_length, length(b)) * sqrt(sum(weight .* (log10.(a .+ 1) .- log10.(b .+ 1)).^2))
+end
+
+
 #function loss_dtw(a::Vector{Float64}, b::Vector{Float64}, nominal_length::int = length(b))::Float64
 #
 #
