@@ -11,7 +11,10 @@ By design, `EcotoxModelFitting.jl` assumes that data is organized in [tidy forma
 
 
 `EcotoxModelFitting.jl` is designed to be used in conjunction with [`EcotoxSystems.jl`](https://github.com/simonhansul/ecotoxsystems.jl.git). 
-For simple fitting problems (e.g. a single endpoint over time), this pacakge is probably overkill, and one could as well use one of the many parameter inference/optimization packages available for Julia, e.g. Turing.jl, ApproxBayes.jl, Optim.jl.
+For simple fitting problems (e.g. a
+ single endpoint over time), this pacakge is probably overkill, and one could as well use one of the many parameter inference/optimization packages available for Julia, e.g. Turing.jl, ApproxBayes.jl, Optim.jl. 
+
+However, I am planning to provide convenience cases for some standard cases (e.g. daphnid reproduction test data), which would make this package more attractive for routine fitting problems.
 
 
 ## TODOs
