@@ -16,14 +16,15 @@ For simple fitting problems (e.g. a single endpoint over time), this pacakge is 
 
 ## TODOs
 
-- [ ] Unit tests
-- [ ] Implement standard Bayesian inference with MCMC for standard examples
+- [x] Unit tests
 - [ ] Implement convenience functions for standard (chronic) tox data
     - [ ] Daphnia reproduction (OECD 211)
     - [ ] Collembola reproduction? (OECD 232)
     - [ ] Algal growth? (OECD 201)
 - [ ] Move metadata handling to its own mini-pacakge
 - [ ] Move everything to do with PMC to its own mini-package -> EcotoxModelFitting.jl should be algorithm-agnostic
+- [ ] Implement standard Bayesian inference with MCMC for standard examples
+- [ ] Add examples for using local optimization 
 
 ## Changelog
 
