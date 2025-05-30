@@ -5,8 +5,9 @@ using ProgressMeter
 using DataStructures
 using StatsBase
 using ComponentArrays
-using LaTeXStrings
-using Requires
+using LaTeXStrings, Latexify
+using JLD2
+using CSV
 
 #using Setfield
 using Base.Threads
@@ -14,7 +15,6 @@ import Base: rand
 import Base: getindex
 import Base: setindex!
 import Base:show
-
 
 include("utils.jl")
 
@@ -47,5 +47,8 @@ export generate_posterior_summary, bestfit
 
 include("populationmontecarlo.jl")
 export run_PMC!
+
+include("assign.jl")
+export assign_values_from_file!
 
 end # module EcotoxModelFitting

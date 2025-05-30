@@ -60,7 +60,8 @@ kwargs
 - `n`: Number of evaluated samples per population
 - `n_init`: Number of evaluated samples in the initial population. The initial population may contain more non-finite losses, so it can make sense to choose `n_init>n`.
 - `q_dist`: Distance quantile to determine next acceptance threshold. A lower `q_dist` value leads to more agressive rejection and faster convergence to a solution, with the risk of identifying a local minimum. If all samples return a finite loss, the number of accepted particles is `n*q_eps`. If there are Infs or NaNs in the losses, the number of accepted particles will be lower. 
-- `savetag`: Tag under which results are saved. Assumes that function `datadir()` is known (provided by `DrWatson`)
+- `savedir`: The directory under which results are collected (complete path includes savetag). Default is equivalent to `DrWatson.datadir("sims")`.
+- `savetag`: Tag under which results are saved. 
 - `continue_from`: Path to a checkpoint file from which to continue the fitting. 
 - `paramlabels`: Formatted parameter labels used to generate a summary of the posterior distribution as latex table. Labels have to be LaTeX-compatible.  
 """
@@ -72,10 +73,10 @@ function run_PMC!(
     q_dist::Float64 = .1,
     t_max = 3,
     evals_per_sample::Int64 = 1,
+    savedir::Union{Nothing,String} = nothing,
     savetag::Union{Nothing,String} = nothing,
     continue_from::Union{Nothing,String} = nothing,
     paramlabels::Union{Nothing,AbstractDict} = nothing,
-    #accepted_parents::Union{Nothing,DataFrame} = nothing
     )::NamedTuple
 
     t = 0
@@ -94,10 +95,10 @@ function run_PMC!(
     end
 
     if !isnothing(savetag)
-        @info "Saving results to $(datadir("sims", savetag))"
+        @info "Saving results to $(joinpath(savedir, savetag))"
 
-        if !isdir(datadir("sims", savetag))
-            mkdir(datadir("sims", savetag))
+        if !isdir(joinpath(savedir, savetag))
+            mkdir(joinpath(savedir, savetag))
         end
     end
     
@@ -284,7 +285,7 @@ function run_PMC!(
     f.losses = all_losses[end]
     
     if !isnothing(savetag)
-        @info "Saving results to $(datadir("sims", savetag))"
+        @info "Saving results to $(joinpath(savedir, savetag))"
     
         samples = DataFrame(f.accepted', f.prior.labels)
         samples[!,:weight] .= f.weights
@@ -303,11 +304,9 @@ function run_PMC!(
 
         # saving posterior summary to csv + tex  
         _ = generate_posterior_summary(
-            f.prior.labels,
-            f.accepted, 
-            f.losses, 
-            f.weights;
+            f;
             tex = !isnothing(savetag),
+            savedir = savedir,
             savetag = savetag,
             paramlabels = paramlabels
             )
