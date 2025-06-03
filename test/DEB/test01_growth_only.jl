@@ -34,9 +34,27 @@ includet("debtest_utils.jl")
 
         defaultparams.spc.X_emb_int = 0.01e-3
 
+        function early_reject(p; kwargs...)
+            S_max = EcotoxSystems.calc_S_max(p.spc)
+            if !(0.5 < S_max/maximum(data[:growth].S) < 2)
+                return true
+            end
+
+            return false
+        end
+
+        function preprocess_params(p; kwargs...)
+            p.spc.dI_max_emb = p.spc.dI_max
+            return p
+        end
+
         function simulator(p; kwargs...)
 
-            p.spc.dI_max_emb = p.spc.dI_max
+            p = preprocess_params(p; kwargs...)
+            
+            if early_reject(p)
+                return nothing
+            end
 
             sim = EcotoxSystems.ODE_simulator(p)
 
@@ -48,9 +66,7 @@ includet("debtest_utils.jl")
 
             return EcotoxModelFitting.OrderedDict(:growth => sim)
 
-        end
-
-        
+        end        
     end
     
     begin # priors
@@ -68,7 +84,7 @@ includet("debtest_utils.jl")
 
         # we thus have specific priors for dI_max and k_M, 
         # the remaining priors are defined around the defualt values
-        prior = Prior(
+        global prior = Prior(
             "spc.dI_max" => prior_dI_max, 
             "spc.k_M" => prior_k_M,
             "spc.eta_AS" => truncated(Normal(0.5, 0.5), 0, 1),
@@ -93,7 +109,7 @@ includet("debtest_utils.jl")
 
         global prior_check = EcotoxModelFitting.prior_predictive_check(f, n = 1000);
 
-        let prior_df = vcat(map(x->x[:growth], prior_check.predictions)...), 
+        let prior_df = vcat(map(x->x[:growth], filter(x -> !isnothing(x), prior_check.predictions))...), 
             plt = plot_data()
 
             @df prior_df lineplot!(:t_day, :S, lw = 2, fillalpha = .2)
@@ -169,7 +185,7 @@ end
 #=
 ## Using the symmetric bounded loss function
 =#
-
+prior
 
 @testset "Fitting to growth data using symmbound loss" begin
 

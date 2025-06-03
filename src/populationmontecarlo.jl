@@ -77,7 +77,7 @@ kwargs
 - `n`: Number of evaluated samples per population
 - `n_init`: Number of evaluated samples in the initial population. The initial population may contain more non-finite losses, so it can make sense to choose `n_init>n`.
 - `q_dist`: Distance quantile to determine next acceptance threshold. A lower `q_dist` value leads to more agressive rejection and faster convergence to a solution, with the risk of identifying a local minimum. If all samples return a finite loss, the number of accepted particles is `n*q_eps`. If there are Infs or NaNs in the losses, the number of accepted particles will be lower. 
-- `savedir`: The directory under which results are collected (complete path includes savetag). Default is equivalent to `DrWatson.datadir("sims")`.
+- `savedir`: The directory under which results are collected (complete path includes savetag).
 - `savetag`: Tag under which results are saved. 
 - `continue_from`: Path to a checkpoint file from which to continue the fitting. 
 - `paramlabels`: Formatted parameter labels used to generate a summary of the posterior distribution as latex table. Labels have to be LaTeX-compatible.  

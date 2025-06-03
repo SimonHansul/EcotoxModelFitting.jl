@@ -3,7 +3,7 @@ using Pkg; Pkg.activate("test/DEB")
 using EcotoxSystems
 using CSV
 using DataFrames
-using Distributions
+using Distributions, Distances
 using StatsPlots
 using Distances
 using Test
@@ -77,6 +77,16 @@ includet("debtest_utils.jl")
     defaultparams.spc.k_M = 0.5039684199579493
     defaultparams.spc.H_p = 258.93333333333334 
 
+    
+    function early_reject(p; kwargs...)
+        S_max = EcotoxSystems.calc_S_max(p.spc)
+        if !(0.5 < S_max/maximum(data[:growth].S) < 2)
+            return true
+        end
+
+        return false
+    end
+
     function simulator(p; kwargs...)
 
         #p.spc.dI_max = exp(p.spc.ln_dI_max)
@@ -84,6 +94,10 @@ includet("debtest_utils.jl")
 
         p.spc.dI_max_emb = p.spc.dI_max # assume same size-specific ingestion for embryos as for non-embryos
         p.spc.k_J = (1-p.spc.kappa)/p.spc.kappa * p.spc.k_M # assume k_J to be linked to k_M
+
+        if early_reject(p)
+            return nothing
+        end
 
         sim = EcotoxSystems.ODE_simulator(p)
 
@@ -100,11 +114,10 @@ includet("debtest_utils.jl")
         return EcotoxModelFitting.OrderedDict(:growth => sim, :repro => repro)
 
     end
-
     
     S_max_emp = maximum(data[:growth].S)
 
-    prior_dI_max = calc_prior_dI_max(S_max_emp)
+    prior_dI_max = calc_prior_dI_max(S_max_emp; cv = 2.)
     prior_k_M = calc_prior_k_M(
         S_max_emp,
         defaultparams.spc.kappa,
@@ -130,23 +143,14 @@ includet("debtest_utils.jl")
         data_weights = [[1.], [1.]], 
         time_var = :t_day, 
         plot_data = plot_data, 
-        loss_functions = EcotoxModelFitting.loss_mse_logtransform
+        loss_functions = EcotoxModelFitting.loss_euclidean_logtransform
     )
-
-    function simpleloss(prediction, data)
-
-        eval_df = rightjoin(prediction[:repro], data[:repro], on = :t_day, makeunique = true)
-
-        l = mean(abs.(eval_df.cum_repro .- eval0_df.cum_repro_1))
-
-    end
-
-    #f.loss = simpleloss 
 
     global prior_check = EcotoxModelFitting.prior_predictive_check(f, n = 1000);
 
-    let prior_growth = vcat(map(x->x[:growth], prior_check.predictions)...), 
-        prior_repro = vcat(map(x->x[:repro], prior_check.predictions)...)
+    valid_prior_pred = filter(x -> !isnothing(x), prior_check.predictions)
+    let prior_growth = vcat(map(x->x[:growth], valid_prior_pred)...), 
+        prior_repro = vcat(map(x->x[:repro], valid_prior_pred)...)
 
         plt = plot_data()
 
@@ -158,10 +162,9 @@ includet("debtest_utils.jl")
 
     @time pmcres = run_PMC!(
         f; 
-        n_init = 50_000, 
-        n = 50_000, 
-        t_max = 5,
-        q_dist = 0.02
+        n = 100_000, 
+        t_max = 3, 
+        q_dist = 1000/100_000
         );
 
     begin
@@ -177,56 +180,34 @@ includet("debtest_utils.jl")
     p_opt = f.accepted[:,argmin(vec(f.losses))]
     sim_opt = f.simulator(p_opt)
 
-    let retro_growth = vcat(map(x->x[:growth], posterior_check.predictions)...), 
-        retro_repro = vcat(map(x->x[:repro], posterior_check.predictions)...), 
-        plt = plot_data()
 
-        @df retro_growth lineplot!(plt, :t_day, :drymass_mg, lw = 3, fillalpha = .2, subplot = 1, leg = true, label = "Retrodiction")
-        @df retro_repro lineplot!(plt, :t_day, :cum_repro, lw = 3, fillalpha = .2, subplot = 2)
-
-        @df sim_opt[:growth] lineplot!(plt, :t_day, :drymass_mg, subplot = 1, lw = 3, label = "Best fit")
-        @df sim_opt[:repro] lineplot!(plt, :t_day, :cum_repro, subplot = 2, lw = 3)
-
-        display(plt)
-    end
-
+    retro_growth = vcat(map(x->x[:growth], posterior_check.predictions)...) 
+    retro_repro = vcat(map(x->x[:repro], posterior_check.predictions)...) 
     
-    @test f.loss(sim_opt, f.data) < 1
-  
+    ## Visual predictive check
+    
+    plt = plot_data()
+
+    @df retro_growth lineplot!(plt, :t_day, :drymass_mg, lw = 3, fillalpha = .2, subplot = 1, leg = true, label = "Retrodiction")
+    @df retro_repro lineplot!(plt, :t_day, :cum_repro, lw = 3, fillalpha = .2, subplot = 2)
+
+    @df sim_opt[:growth] lineplot!(plt, :t_day, :drymass_mg, subplot = 1, lw = 3, label = "Best fit")
+    @df sim_opt[:repro] lineplot!(plt, :t_day, :cum_repro, subplot = 2, lw = 3)
+
+    display(plt)
+    
+    ## Quantiative check
+
+    eval_df_growth = leftjoin(f.data[:growth], sim_opt[:growth], on = :t_day, makeunique=true)
+    eval_df_repro = leftjoin(f.data[:repro], sim_opt[:repro], on = :t_day, makeunique=true)
+
+    nrmsd_growth = Distances.nrmsd(eval_df_growth.S, eval_df_growth.S_1)
+    nrmsd_repro = Distances.nrmsd(eval_df_repro.cum_repro, eval_df_repro.cum_repro_1)
+    
+    println("NRMSD growth: $(round(nrmsd_growth, sigdigits=4))")
+    println("NRMSD repro: $(round(nrmsd_repro, sigdigits=4))")
+
+    @test nrmsd_growth < 0.1
+    @test nrmsd_repro < 0.1
 end
 
-#posterior_check = posterior_predictions(f, 1000);
-#
-#sumstats_observed = extract_sumstats_azoxy(f.data)
-#sumstats_retrodicted = extract_sumstats_azoxy(posterior_check.predictions)
-#
-#reldiff_max_structural_mass = sumstats_observed.max_structural_mass ./ sumstats_retrodicted.max_structural_mass
-#
-#
-#sim_opt = f.simulator(bestfit(f))
-#plt = plot_data()
-#
-#@df sim_opt[:growth] plot!(:t_day, :S, subplot = 1)
-#@df sim_opt[:repro] plot!(:t_day, :cum_repro, subplot = 2)
-
-
-
-
-
-#using Optim
-#
-#optfun = EcotoxModelFitting.define_objective_function(f)
-#p0 = mode.(f.prior.dists)
-#
-#lower_bounds = [quantile(d, 0.01) for d in f.prior.dists]
-#upper_bounds = [quantile(d, 0.99) for d in f.prior.dists]
-#ps = ParticleSwarm(lower = lower_bounds, upper = upper_bounds, n_particles = 100)
-#res = optimize(optfun, p0, ps)
-#
-#
-#
-#sim_opt = f.simulator(res.minimizer)
-#plt = plot_data()
-#
-#@df sim_opt[:growth] plot!(:t_day, :S, subplot = 1)
-#@df sim_opt[:repro] plot!(:t_day, :cum_repro, subplot = 2)

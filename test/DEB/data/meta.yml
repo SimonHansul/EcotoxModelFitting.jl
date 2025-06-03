@@ -1,0 +1,27 @@
+- key: azoxy_static_growth
+  path: "data/azoxy_static_growth_tidy.csv"
+  columns:
+    - name: C_W
+      unit: mg/L
+      description: Azoxystrobin exposure concentration, constant throughout experiment
+    - name: t_day
+      unit: d
+      description: time since start of experiment. start of experiment is 0-24h since hatching of neonates.
+    - name: length_mm
+      unit: mm
+      description: average measured carapace length
+    - name: S
+      unit: mugC
+      description: estimated average organism dry mass, inferred based on a statistical relationships by Gellert & Müller (1985)
+- key: azoxy_static_repro
+  path: "azoxy_static_repro_tidy.csv"
+  columns:
+    - name: C_W
+      unit: mg/L
+      description: Azoxystrobin exposure concentration, constant throughout experiment
+    - name: t_day
+      unit: d
+      description: time since start of experiment. start of experiment is 0-24h since hatching of neonates.  
+    - name: cum_repro
+      unit: 1
+      description: average cumulative number of living offspring produced per female test animal

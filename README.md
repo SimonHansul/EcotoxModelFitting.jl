@@ -55,3 +55,10 @@ However, I am planning to provide convenience cases for some standard cases (e.g
 
 - Added `evals_per_sample` argument to `run_PMC!`
 - Minor bugfixes
+
+### v0.1.7
+
+- Added Epanechnikov acceptance kernel to the population monte carlo algorithm. validated with test/conjugate/conjugate_normal.jl. error on posterior variance decreased considerably, compared to hard rejection approach
+- Added early rejection to unit tests for DEB growth only, as well as growth+repro
+    - For constant computational effort, this led to a massive increase in the posterior retrodictive precision.
+    - Early rejection should be incorporated into convenience functions for standard cases (Daphnid reproduction test)
