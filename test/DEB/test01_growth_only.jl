@@ -192,7 +192,7 @@ prior
    begin # problem definition and prior check
         global f = ModelFit(
             prior = prior,
-            defaultparams = defaultparams, 
+            defaultparams = EcotoxSystems.defaultparams, 
             simulator = simulator,
             data = data, 
             response_vars = [[:S]], 
