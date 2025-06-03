@@ -18,7 +18,11 @@ end
 
 
 compute_thresholds(q_dist::Float64, losses::Matrix{Float64}) = [quantile(d, q_dist) for d in eachrow(losses)]
-norm(x) = x ./ sum(x)
+#norm(x) = x ./ sum(filter(isfinite, x))
+function norm(x)
+    s = sum(filter(isfinite, x))
+    return s == 0 ? fill(1.0 / length(x), length(x)) : x ./ s
+end
 
 
 function posterior_predictions(f::ModelFit, n::Int64 = 100)
@@ -34,6 +38,19 @@ function posterior_predictions(f::ModelFit, n::Int64 = 100)
 
     return (predictions=predictions, samples=samples)
 end
+
+function epanechnikov_acceptance_probability(dist::Real, threshold::Real)
+    if dist > threshold
+        return 0
+    else
+        
+        u = dist/threshold
+        w = 1/threshold * (1 - (dist/threshold)^2)
+
+        return w
+    end
+end
+
 
 """
     run_PMC!(
@@ -141,8 +158,11 @@ function run_PMC!(
                 
                 particles = particles[:,accepted_particle_idxs]
                 losses = losses[:,accepted_particle_idxs]
-                weights = weights[accepted_particle_idxs] |> norm
-                
+
+                smooth_acceptance_probs = epanechnikov_acceptance_probability.(losses, threshold) |> norm |> vec
+                weights = weights[accepted_particle_idxs] |> norm |> 
+                x -> x .* smooth_acceptance_probs |> norm
+
                 # take τ to be twice the empirical variance of Θ
                 vars = [2*var(tht) for tht in eachrow(particles)]
 
@@ -246,12 +266,17 @@ function run_PMC!(
             losses = losses[:,valid_dist_idxs]
             weights = weights[valid_dist_idxs]
 
+            # rejection step
             threshold = compute_thresholds(q_dist, losses)
             accepted_particle_idxs = [sum(l .> threshold)==0 for l in eachcol(losses)]
             particles = particles[:,accepted_particle_idxs]
-            weights = weights[accepted_particle_idxs] |> norm
+            weights = weights[accepted_particle_idxs] |> norm 
             losses = losses[:,accepted_particle_idxs]
 
+            # apply smooth acceptance probability to weights and re-normalize
+            smooth_acceptance_probs = epanechnikov_acceptance_probability.(losses, threshold) |> norm |> vec
+            weights = weights .* smooth_acceptance_probs |> norm
+            
             # take τ^2_t+1 as twice the weighted empirical variance of the θ_its 
             vars = [2*var(tht, Weights(weights)) for tht in eachrow(particles)]
 
@@ -259,6 +284,7 @@ function run_PMC!(
             push!(all_weights, weights)
             push!(all_losses, losses)
             push!(all_vars, vars)
+            push!(all_thresholds, threshold)
             
             # save data to checkpoint
             if !(isnothing(savetag))
@@ -278,7 +304,6 @@ function run_PMC!(
             end
         end
     end
-
 
     f.accepted = all_particles[end]
     f.weights = all_weights[end]
