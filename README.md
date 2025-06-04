@@ -62,3 +62,4 @@ However, I am planning to provide convenience cases for some standard cases (e.g
 - Added early rejection to unit tests for DEB growth only, as well as growth+repro
     - For constant computational effort, this led to a massive increase in the posterior retrodictive precision.
     - Early rejection should be incorporated into convenience functions for standard cases (Daphnid reproduction test)
+- Added `logweights` argument to `run_PMC!`. This is a hotfix and should eventually not be needed anymore. 

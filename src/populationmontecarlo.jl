@@ -62,6 +62,8 @@ end
         t_max = 3,
         savetag::Union{Nothing,String} = nothing,
         continue_from::Union{Nothing,String} = nothing,
+        paramlabels::Union{Nothing,AbstractDict} = nothing,
+        logweights::Bool = false
     )::NamedTuple
 
 Model fitting with Approximate Bayesian Computation Population Monte Carlo (ABC-PMC) 
@@ -81,6 +83,7 @@ kwargs
 - `savetag`: Tag under which results are saved. 
 - `continue_from`: Path to a checkpoint file from which to continue the fitting. 
 - `paramlabels`: Formatted parameter labels used to generate a summary of the posterior distribution as latex table. Labels have to be LaTeX-compatible.  
+- `logweights`: Option to apply log-transformation to the PMC weights. Note that this will introduce an error on the posterior variance. 
 """
 function run_PMC!(
     f::ModelFit; 
@@ -94,6 +97,7 @@ function run_PMC!(
     savetag::Union{Nothing,String} = nothing,
     continue_from::Union{Nothing,String} = nothing,
     paramlabels::Union{Nothing,AbstractDict} = nothing,
+    logweights::Bool = false
     )::NamedTuple
 
     t = 0
@@ -237,13 +241,11 @@ function run_PMC!(
                     ϕ = prod(pdf.(Normal.(), (θ_j .- θ_i)./old_vars))
                     weight_denom += ω_j * ϕ
                 end
-
-                # using log-weights often stabilizes the posterior
-                # FIXME: 
-                # log-transformation of weights distorts the posterior 
-                # this wasintroduced as a hotfix because we keep running into convergence issues for complex models if we use the "normal weights"
-                #ω = log((weight_num/weight_denom) + 1)
+                
                 ω = (weight_num/weight_denom)
+                if logweights
+                    ω = log(ω + 1)
+                end
 
                 # run the simulations
                 L = 0.

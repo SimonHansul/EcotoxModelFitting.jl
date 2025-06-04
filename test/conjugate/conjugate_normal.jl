@@ -69,14 +69,14 @@ using EcotoxModelFitting
 
     relerr(a, b) = a/((a+b)/2)
 
-    err_posterior_mean = relerr(posterior_mean_pmc, posterior_mean)
-    err_posterior_var = relerr(posterior_var_pmc, posterior_var)
+    rel_posterior_mean = relerr(posterior_mean_pmc, posterior_mean)
+    rel_posterior_var = relerr(posterior_var_pmc, posterior_var)
 
-    @info "Error on posterior mean: $(round(err_posterior_mean, sigdigits = 4))"
-    @info "Error on posterior variance: $(round(err_posterior_var, sigdigits = 4))"
+    @info "Posterior mean, relative to true: $(round(rel_posterior_mean, sigdigits = 4))"
+    @info "Posterior variance, relative to true: $(round(rel_posterior_var, sigdigits = 4))"
 
-    @test 0.95 <= err_posterior_mean <= 1.05
-    @test 0.9 <= err_posterior_var <= 1.1
+    @test 0.95 <= rel_posterior_mean <= 1.05
+    @test 0.95 <= rel_posterior_var <= 1.05
 end
 
 plot(Normal(posterior_mean, sqrt(posterior_var)))
