@@ -16,11 +16,11 @@ end
 
 # unit test data azoxystrobin/daphnia magna
 
-function load_growth_data_azoxy()
+function load_growth_data_azoxy(;controls_only = true)
 
     growth = CSV.read("test/DEB/data/azoxy_static_growth_tidy.csv", DataFrame) |>
-    x -> x[(x.C_W .== 0),:] |> 
-    x -> combine(groupby(x, :t_day)) do df
+    x -> x[BitVector(min.(1, (x.C_W .== 0) .+ (!controls_only))),:] |> 
+    x -> combine(groupby(x, [:t_day, :C_W])) do df
 
         return DataFrame(
             length_mm = mean(skipmissing(df.length_mm)), 
@@ -28,25 +28,35 @@ function load_growth_data_azoxy()
             S = mean(skipmissing(df.S)),
             S_sd = std(skipmissing(df.S))
         )
-
-    end
+    end |> dropmissing
 
     return growth
 
 end
 
-function load_repro_data_azoxy()
+function load_repro_data_azoxy(;controls_only=true)
 
     repro = CSV.read("test/DEB/data/azoxy_static_repro_tidy.csv", DataFrame) |> 
-    x -> x[(x.C_W .== 0),:] |>
-    x -> combine(groupby(x, :t_day)) do df
+    x -> x[BitVector(min.(1, (x.C_W .== 0) .+ (!controls_only))),:] |> 
+    x -> combine(groupby(x, [:t_day, :C_W])) do df
 
         return DataFrame(
-            cum_repro = mean(df.cum_repro), 
-            cum_repro_sd = std(df.cum_repro)
+            cum_repro = mean(df.cum_repro),
         )
 
-    end
+    end |> dropmissing
+
+    for trt in unique(repro.C_W)
+        append!(
+            repro, 
+            DataFrame(
+                t_day = [0,7], 
+                cum_repro=[0,0],
+                C_W=[trt,trt])
+                )
+    end 
+
+    sort!(repro, :t_day)
 
     return repro
 
@@ -122,7 +132,5 @@ function extract_sumstats_azoxy(data::AbstractDict)
 end
 
 function extract_sumstats_azoxy(simulations::AbstractVector)
-
     return vcat(extract_sumstats_azoxy.(simulations)...)
-    
 end

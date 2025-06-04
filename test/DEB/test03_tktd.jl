@@ -2,9 +2,10 @@ using Pkg; Pkg.activate("test/DEB")
 
 using EcotoxSystems
 using CSV
-using DataFrames
+using DataFrames, DataFramesMeta
 using Distributions, Distances
 using StatsPlots
+default(leg = false)
 using Distances
 using Test
 
@@ -14,18 +15,26 @@ using EcotoxModelFitting
 include("debtest_utils.jl")
 includet("debtest_utils.jl")
 
-@testset "Fitting to growth and reproduction data" begin
+# TODO: fix tktd test
+@testset "Fitting TKTD model" begin
     
     data = EcotoxModelFitting.OrderedDict(
-        :growth => load_growth_data_azoxy(), 
-        :repro => load_repro_data_azoxy()
+        :growth => load_growth_data_azoxy(controls_only=false), 
+        :repro => load_repro_data_azoxy(controls_only=false)
     )
 
+    treatments = unique(vcat([x.C_W for x in values(data)]...))
+    num_treatments = length(treatments)
+
     function plot_data(;kwargs...)
-        plt_growth = @df data[:growth] lineplot(:t_day, :S; lw = 1.5, marker = true, color = :black, xlabel = "Time (d)", ylabel = "Dry mass (mg)", leg = true, label = "Data", kwargs...)
-        plt_repro = @df data[:repro] lineplot(:t_day, :cum_repro, lw = 1.5, marker = true, color = :black, leg = false, xlabel = "Time (d)", ylabel = "Cumulative reproduction (#)")
+        plt = plot(layout = (2,num_treatments), size = (1200,500), sharex = true)
+
+        for (i,trt) in enumerate(treatments)
+            @df @subset(data[:growth], :C_W .== trt) lineplot!(:t_day, :S, title = trt, lw = 0, subplot = i, color = :black, marker = true, ylim = (-1, 600))
+            @df @subset(data[:repro], :C_W .== trt) lineplot!(:t_day, :cum_repro, xlabel = "Time (d)", lw = 0, subplot = i+num_treatments, color = :black, marker = true, ylim = (-1,60))
+        end
         
-        return plot(plt_growth, plt_repro, layout = (1,2), size = (1000,400))
+        return plt
     end
 
     defaultparams = EcotoxSystems.ComponentVector(
@@ -50,10 +59,11 @@ includet("debtest_utils.jl")
     defaultparams.spc.k_M = 0.5039684199579493
     defaultparams.spc.H_p = 258.93333333333334 
 
-    
     function early_reject(p; kwargs...)
+        
         S_max = EcotoxSystems.calc_S_max(p.spc)
-        if !(0.1 < S_max/maximum(data[:growth].S) < 10)
+
+        if !(0.5 < S_max/maximum(@subset(data[:growth], :C_W .== 0).S) < 2)
             return true
         end
 
@@ -72,15 +82,15 @@ includet("debtest_utils.jl")
             return nothing
         end
 
-        sim = EcotoxSystems.ODE_simulator(p)
-
+        sim = exposure(EcotoxSystems.ODE_simulator, p, treatments)
+        rename!(sim, :C_W_1 => :C_W)
         # convert simulation time to experimental time
         sim[!,:t_day] = sim.t .- INIT_AGE
         sim.t_day = ceil.(sim.t_day) 
 
         sim[!,:drymass_mg] = sim.S
 
-        repro = sim[:,[:t_day,:R]] 
+        repro = sim[:,[:t_day,:R, :C_W]] 
         repro[!,:cum_repro] = trunc.(repro.R ./ p.spc.X_emb_int)
         repro[!,:t_day] .+ EMB_DEV_TIME 
 
@@ -88,7 +98,7 @@ includet("debtest_utils.jl")
 
     end
     
-    S_max_emp = maximum(data[:growth].S)
+    S_max_emp = maximum(@subset(data[:growth], :C_W .== 0).S)
 
     prior_dI_max = calc_prior_dI_max(S_max_emp; cv = 2.)
     prior_k_M = calc_prior_k_M(
@@ -99,11 +109,16 @@ includet("debtest_utils.jl")
     )
 
     prior = Prior(
+        
         "spc.dI_max" => prior_dI_max, 
         "spc.k_M" => prior_k_M,
         "spc.eta_AS" => truncated(Normal(0.5, 0.5), 0, 1),
         "spc.kappa" => truncated(Normal(0.539, 0.539), 0, 1),
-        "spc.H_p" => truncated(Normal(100, 100), 0, Inf)
+        "spc.H_p" => truncated(Normal(100, 100), 0, Inf),
+
+        "spc.KD[1,4]" => truncated(Normal(1,2), 0, Inf),
+        "spc.E[1,4]" => truncated(Normal(200,200), 0, Inf),
+        "spc.B[1,4]" => truncated(Normal(2,10), 0, Inf)
     )    
 
     global f = ModelFit(
@@ -113,13 +128,18 @@ includet("debtest_utils.jl")
         data = data, 
         response_vars = [[:S], [:cum_repro]], 
         time_resolved = [true, true], 
+        grouping_vars = [[:C_W], [:C_W]],
         data_weights = [[1.], [1.]], 
         time_var = :t_day, 
         plot_data = plot_data, 
         loss_functions = EcotoxModelFitting.loss_euclidean_logtransform
-    )
+    );
 
-    global prior_check = EcotoxModelFitting.prior_predictive_check(f, n = 1000);
+    global prior_check = EcotoxModelFitting.prior_predictive_check(
+        f, 
+        n = 5000; 
+        compute_loss = false
+        );
 
     valid_prior_pred = filter(x -> !isnothing(x), prior_check.predictions)
     let prior_growth = vcat(map(x->x[:growth], valid_prior_pred)...), 
