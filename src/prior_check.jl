@@ -1,6 +1,6 @@
 
 function prior_predictive_check(
-    f::ModelFit;
+    f::PMCBackend;
     compute_loss::Bool = true,
     loss = f.loss,
     n::Int64 = 100

@@ -1,31 +1,31 @@
 
-function _check_if_time_resolved(f::ModelFit, i::Int64)::Bool
+function _check_if_time_resolved(f::PMCBackend, i::Int64)::Bool
 
     return f.time_resolved[i]
 
 end
 
-function _check_for_grouping_vars(f::ModelFit, i::Int64)::Bool
+function _check_for_grouping_vars(f::PMCBackend, i::Int64)::Bool
 
     return length(f.grouping_vars[i])>0
 
 end
 
 """
-    generate_loss_function(f::ModelFit)::Function
+    generate_loss_function(f::PMCBackend)::Function
 
 Generates a loss function based on some simplifying assumptions: 
 
     - All data is stored in a dictionary of `DataFrame`s (data tables).
     - The simulation output is give in the same format.
-    - Eeach data table is either time-resolved or not (cf. initialization of `ModelFit`).
+    - Eeach data table is either time-resolved or not (cf. initialization of `PMCBackend`).
     - If the data is time-resolved, it has to have a column whose name is indicated by `time_var`.
     - `f.loss_functions` lists the error models applied for each response variable. 
     - Each data table can have multiple response variables, indicated in `f.response_vars`
 
 By default, the individual losses for each response variable are returned separately. <br>
 """
-function generate_loss_function(f::ModelFit)::Function
+function generate_loss_function(f::PMCBackend)::Function
 
     join_vars = similar(f.grouping_vars)
     data_columns = similar(f.grouping_vars)

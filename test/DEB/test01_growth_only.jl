@@ -6,6 +6,7 @@ using DataFrames, DataFramesMeta
 using StatsPlots
 using StatsBase
 using Distances
+using Distributions
 using Test
 
 using Revise
@@ -16,11 +17,11 @@ includet("debtest_utils.jl")
 @testset "Fitting to growth data only" begin
     
     begin # boilerplate
-        data = EcotoxModelFitting.OrderedDict(
+        global data = EcotoxModelFitting.OrderedDict(
             :growth => load_growth_data_azoxy()
         )
 
-        function plot_data()
+        global function plot_data()
 
             plt = @df data[:growth] lineplot(:t_day, :S, lw = 1.5, marker = true, color = :black, leg = false, xlabel = "Time (d)", ylabel = "Dry mass (mg)")
             
@@ -34,7 +35,7 @@ includet("debtest_utils.jl")
 
         defaultparams.spc.X_emb_int = 0.01e-3
 
-        function early_reject(p; kwargs...)
+        global function early_reject(p; kwargs...)
             S_max = EcotoxSystems.calc_S_max(p.spc)
             if !(0.5 < S_max/maximum(data[:growth].S) < 2)
                 return true
@@ -43,12 +44,12 @@ includet("debtest_utils.jl")
             return false
         end
 
-        function preprocess_params(p; kwargs...)
+        global function preprocess_params(p; kwargs...)
             p.spc.dI_max_emb = p.spc.dI_max
             return p
         end
 
-        function simulator(p; kwargs...)
+        global function simulator(p; kwargs...)
 
             p = preprocess_params(p; kwargs...)
             
@@ -94,7 +95,7 @@ includet("debtest_utils.jl")
 
     
     begin # problem definition and prior check
-        global f = ModelFit(
+        global f = PMCBackend(
             prior = prior,
             defaultparams = defaultparams, 
             simulator = simulator,
@@ -119,29 +120,29 @@ includet("debtest_utils.jl")
     end
     
     begin # running the calibration
-        @time pmcres = run_PMC!(
+        @time pmchist = run_PMC!(
         f; 
         n = 50_000, 
         t_max = 3, 
         q_dist = 1000/50_000
         );
 
-        function plot_pmc_loss(pmcres)
+        function plot_pmc_loss(pmchist)
             
             plt = plot(
-                    eachindex(pmcres.particles) .- 1, map(minimum, pmcres.particles), 
+                    eachindex(pmchist.particles) .- 1, map(minimum, pmchist.particles), 
                     marker = true, lw = 1.5, 
                     xlabel = "PMC step", ylabel = "loss", 
                     label = "Minimum"
                     )
             plot!(
-                eachindex(pmcres.particles) .- 1, map(median, pmcres.particles), 
+                eachindex(pmchist.particles) .- 1, map(median, pmchist.particles), 
                 marker = true, lw = 1.5, label = "Median"
                 )
             return plt
         end
 
-        plot_pmc_loss(pmcres) |> display
+        plot_pmc_loss(pmchist) |> display
     end
 
     
@@ -166,7 +167,6 @@ includet("debtest_utils.jl")
         
         display(VPC)    
     end
-    
 
     #=
     ## Quantitative check
@@ -185,12 +185,11 @@ end
 #=
 ## Using the symmetric bounded loss function
 =#
-prior
 
 @testset "Fitting to growth data using symmbound loss" begin
 
    begin # problem definition and prior check
-        global f = ModelFit(
+        global f = PMCBackend(
             prior = prior,
             defaultparams = EcotoxSystems.defaultparams, 
             simulator = simulator,
@@ -205,7 +204,7 @@ prior
 
         global prior_check = EcotoxModelFitting.prior_predictive_check(f, n = 1000);
 
-        let prior_df = vcat(map(x->x[:growth], prior_check.predictions)...), 
+        let prior_df = vcat(map(x->x[:growth], filter(!isnothing, prior_check.predictions))...), 
             plt = plot_data()
 
             @df prior_df lineplot!(:t_day, :S, lw = 2, fillalpha = .2)
@@ -214,29 +213,29 @@ prior
     end
 
     begin # running the calibration
-        @time pmcres = run_PMC!(
+        @time pmchist = run_PMC!(
         f; 
         n = 50_000, 
         t_max = 3, 
         q_dist = 1000/50_000
         );
 
-        function plot_pmc_loss(pmcres)
+        function plot_pmc_loss(pmchist)
             
             plt = plot(
-                    eachindex(pmcres.particles) .- 1, map(minimum, pmcres.particles), 
+                    eachindex(pmchist.particles) .- 1, map(minimum, pmchist.particles), 
                     marker = true, lw = 1.5, 
                     xlabel = "PMC step", ylabel = "loss", 
                     label = "Minimum"
                     )
             plot!(
-                eachindex(pmcres.particles) .- 1, map(median, pmcres.particles), 
+                eachindex(pmchist.particles) .- 1, map(median, pmchist.particles), 
                 marker = true, lw = 1.5, label = "Median"
                 )
             return plt
         end
 
-        plot_pmc_loss(pmcres) |> display
+        plot_pmc_loss(pmchist) |> display
     end
 
     begin # VPC

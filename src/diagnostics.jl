@@ -1,7 +1,7 @@
 
 """
     generate_posterior_summary(
-        f::ModelFit; 
+        f::PMCBackend; 
         tex = false,
         paramlabels::Union{Nothing,AbstractDict} = nothing,
         savetag::Union{Nothing,String} = nothing
@@ -11,14 +11,14 @@ Generate summary of marginal posterior distributions.
 
 ## Arguments 
 
-- `f`: A `ModelFit` object with PMC results. `
+- `f`: A `PMCBackend` object with PMC results. `
 - `tex`: Indication of whether summary should be saved as `posterior_summary.tex` within the `savetag` directory. 
 
 If no `savetag` is provided, `tex=true` will be ignored.
 If a `savetag` is provided, 
 """
 function generate_posterior_summary(
-    f::ModelFit; 
+    f::PMCBackend; 
     tex = false,
     paramlabels::Union{Nothing,AbstractDict} = nothing,
     savedir::Union{Nothing,String} = nothing,
@@ -74,6 +74,6 @@ function bestfit(accepted::AbstractDataFrame)
 end
 
 
-function bestfit(f::ModelFit)    
+function bestfit(f::PMCBackend)    
     return f.accepted[:,argmin(vec(f.losses))]
 end

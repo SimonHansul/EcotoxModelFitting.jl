@@ -32,7 +32,7 @@ function define_objective_function(
 end
 
 
-function define_objective_function(f::ModelFit)
+function define_objective_function(f::PMCBackend)
 
     return define_objective_function(
         f.data, 

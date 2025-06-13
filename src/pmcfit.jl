@@ -1,5 +1,5 @@
 
-mutable struct ModelFit
+mutable struct PMCBackend  <: AbstractFittingBackend
     
     prior::Prior
     defaultparams#::ComponentArray
@@ -19,9 +19,11 @@ mutable struct ModelFit
     thresholds::Vector{Float64}
     weights::Vector{Float64}
     combine_losses::Function
+    
+    pmchist::NamedTuple # PMC history - all accepted particles, weights, distances etc.
 
     """
-        ModelFit(;
+        PMCBackend(;
                 prior::Prior, 
                 defaultparams::ComponentArray,
                 simulator::Function, 
@@ -36,7 +38,7 @@ mutable struct ModelFit
                 combine_losses::Function = sum
                 )
 
-    Initialize a `ModelFit` instance, collecting all information needed to perform a fit. 
+    Initialize a `PMCBackend` instance, collecting all information needed to perform a fit. 
 
     kwargs:
 
@@ -55,7 +57,7 @@ mutable struct ModelFit
 
 
     """
-    function ModelFit(;
+    function PMCBackend(;
         prior::Prior, 
         defaultparams::ComponentArray,
         simulator::Function, 
@@ -69,7 +71,6 @@ mutable struct ModelFit
         combine_losses::Function = sum, # function that combines losses into single value; can also be x->x to retain all losses
         plot_data::Function = emptyplot
         )
-
         f = new()
 
         f.prior = prior
@@ -120,6 +121,7 @@ mutable struct ModelFit
 end
 
 
+
 function normalize_observation_weights!(data::AbstractDict)::Nothing
 
     norm_const = 0.
@@ -136,7 +138,7 @@ function normalize_observation_weights!(data::AbstractDict)::Nothing
 
 end
 
-function assign_data_weights!(f::ModelFit, data_weights::Union{Nothing,Vector{Vector{Float64}}})::Nothing
+function assign_data_weights!(f::PMCBackend, data_weights::Union{Nothing,Vector{Vector{Float64}}})::Nothing
     
     if isnothing(data_weights)
         @info "No data weights provided, assuming uniform weights"
@@ -150,7 +152,7 @@ function assign_data_weights!(f::ModelFit, data_weights::Union{Nothing,Vector{Ve
 
 end
 
-function update_data_weights!(f::ModelFit, data_weights::Vector{Vector{R}})::Nothing where R <: Real
+function update_data_weights!(f::PMCBackend, data_weights::Vector{Vector{R}})::Nothing where R <: Real
     
     f.data_weights = data_weights |> x -> x ./ sum(vcat(x...))
     f.loss = generate_loss_function(f)
@@ -159,12 +161,12 @@ function update_data_weights!(f::ModelFit, data_weights::Vector{Vector{R}})::Not
 end
 
 # separate loss function for each response variable
-function assign_loss_functions!(f::ModelFit, loss_functions::Vector{Vector{F}}) where F <: Function
+function assign_loss_functions!(f::PMCBackend, loss_functions::Vector{Vector{F}}) where F <: Function
     f.loss_functions = loss_functions
 end
 
 # single loss function is given => assume same for all response variables
-function assign_loss_functions!(f::ModelFit, loss_functions::F) where F <: Function
+function assign_loss_functions!(f::PMCBackend, loss_functions::F) where F <: Function
     f.loss_functions = [repeat([loss_functions], length(vars)) for vars in f.response_vars]
 end
 
@@ -172,7 +174,7 @@ end
     generate_fitting_simulator(defaultparams::ComponentArray, prior::Prior, simulator::Function)::Function
 
 Attempt to define a generic simulator function, based on the information given to the ModelFitting object. <br> 
-This function is called internally when calling `ModelFit`, but can be overwritten with a custom definition if needed. <br>
+This function is called internally when calling `PMCBackend`, but can be overwritten with a custom definition if needed. <br>
 I am sure there are use-cases where this will fail. For the cases tested so far though, it worked fine and was quite helpful.
 
 The generated "fitting simulator" 
@@ -181,7 +183,7 @@ The generated "fitting simulator"
     - Assures that parameters are assigned correctly to a copy of the defaultparams
     - Pre-allocates copies of the defaultparams with account for multithreading
     - Deals with priors provided as `Hyperdist` (currently not in a full hierarchical approach, TBC)
-    - Defines a second method for the fitting_simulator which dispatches to the original `simulator` function (useful in conjunction with the `ModelFit` struct)
+    - Defines a second method for the fitting_simulator which dispatches to the original `simulator` function (useful in conjunction with the `PMCBackend` struct)
 
 """
 function generate_fitting_simulator(defaultparams, prior::Prior, simulator::Function)::Function
@@ -211,7 +213,7 @@ function generate_fitting_simulator(defaultparams, prior::Prior, simulator::Func
 end
 
 """
-    define_data_scales(f::ModelFit, join_vars::Vector{Vector{Symbol}}; strategy = "maxima")::Vector{Vector{Float64}}
+    $(TYPEDSIGNATURES)
 
 Defines data scales based on strategy "maxima".
 
@@ -225,68 +227,20 @@ In combination with `loss=loss_mse`, the resulting loss function is the simplifi
 corrected for the number of observations per response and grouping variable.
 """
 function define_data_scales(
-    f::ModelFit, 
+    f::PMCBackend, 
     join_vars::Vector{Vector{Symbol}}; 
-    strategy = "maxima"
+    scalefunc = maximum
     )::Vector{Vector{Float64}}
 
-    if strategy == "maxima"
-        scales = [zeros(size(vars)) for vars in f.response_vars]
+    scales = [zeros(size(vars)) for vars in f.response_vars]
 
-        for (i,key) in enumerate(f.data.keys)
-            for (j,var) in enumerate(f.response_vars[i])
-                scale = maximum(skipmissing(f.data[key][:,var]))
-                scales[i][j] = scale
-            end
+    for (i,key) in enumerate(f.data.keys)
+        for (j,var) in enumerate(f.response_vars[i])
+            scale = scalefunc(skipmissing(f.data[key][:,var]))
+            scales[i][j] = scale
         end
-
-        return scales
-
-    else 
-        error("Strategy $strategy not implemented or work in progress")
-
-        #scales = [zeros(size(vars)) for vars in f.response_vars]
-        #
-        ## for every data table
-        #for (i,key) in enumerate(f.data.keys)
-        #    # if we have no join vars (i.e. no time variable and no additional grouping vars), 
-        #    # then we do the mean-centering over all values for each response variable
-        #    if length(join_vars[i]) == 0
-        #        for (j,y) in enumerate(f.response_vars[i])
-        #            yvals = f.data[key][:,y]
-        #            if length(yvals)>1
-        #                scales[i][j] = 2*var(yvals .- mean(yvals))
-        #            # if we have only one value, then the scale is the squared value itself
-        #            else
-        #                scales[i][j] = yvals[1]^2
-        #            end
-        #        end
-        #    # if we have join vars (time, grouping vars or both), 
-        #    # then we do the mean-centering for each value of each join var
-        #    else
-        #        for (j,y) in enumerate(f.response_vars[i])
-        #            centered_yvals = []
-        #            all_yvals = []
-        #            for (m,jvar) in enumerate(join_vars[i])
-        #                for (l,jvar_val) in enumerate(unique(f.data[key][:,jvar]))
-        #                    df = f.data[key]
-        #                    yvals = df[df[:,jvar].==jvar_val,y]
-        #                    yvals_mean = mean(skipmissing(yvals))
-        #                    push!(centered_yvals,  yvals .- mean(yvals))
-        #                    push!(all_yvals, yvals)
-        #                end
-        #            end
-        #
-        #            if length(unique(centered_yvals))>1
-        #                @info """For $key data and repsonse variable $y, found no variance within groups to calculate error variance. Using mean(y)^2 as data scale."""
-        #                scales[i][j] = 2*var(centered_yvals)
-        #            else
-        #                scales[i][j] = mean(all_yvals)^2
-        #            end
-        #        end
-        #    end
-        #end
-
     end
+
+    return scales
 
 end

@@ -63,3 +63,17 @@ However, I am planning to provide convenience cases for some standard cases (e.g
     - For constant computational effort, this led to a massive increase in the posterior retrodictive precision.
     - Early rejection should be incorporated into convenience functions for standard cases (Daphnid reproduction test)
 - Added `logweights` argument to `run_PMC!`. This is a hotfix and should eventually not be needed anymore. 
+
+
+### v0.1.8
+
+Moving towards EcotoxModelFitting 1.0.0: Preparations to support multiple fitting backends. 
+
+- What used to be `ModelFit` is now `PMCBackend`. 
+    - The idea is that there will be a generic `setup_modelfit` function which will take the backend type as argument, as in 
+        ```Julia
+        f = setup_modelfit(;...backend = PMCBackend)
+        ```
+    - Then we will be able to exploit multiple dispatch to let `setup_modelfit` return an instance of the backend type and simply call `run!(f)` to execute the appropriate method.
+    - To maintain backwards compatability, we will keep `ModelFit` as alias for `PMCBackend` for a few more versions
+- What used to be `pmcres` is now `pmchhist`, and is a field of `PMCBackend`. We maintain backwards compatability by letting `run_PMC!` return `pmcres`.

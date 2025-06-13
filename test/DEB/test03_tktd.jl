@@ -121,7 +121,7 @@ includet("debtest_utils.jl")
         "spc.B[1,4]" => truncated(Normal(2,10), 0, Inf)
     )    
 
-    global f = ModelFit(
+    global f = PMCBackend(
         prior = prior,
         defaultparams = defaultparams, 
         simulator = simulator,
@@ -153,7 +153,7 @@ includet("debtest_utils.jl")
         display(plt)
     end
 
-    @time pmcres = run_PMC!(
+    @time pmchist = run_PMC!(
         f; 
         n = 100_000, 
         t_max = 3, 
@@ -162,10 +162,10 @@ includet("debtest_utils.jl")
 
     begin
         plot(
-            eachindex(pmcres.particles) .- 1, map(minimum, pmcres.particles), 
+            eachindex(pmchist.particles) .- 1, map(minimum, pmchist.particles), 
             marker = true, lw = 1.5, xlabel = "PMC step", ylabel = "loss", label = "Minimum"
             )
-        plot!(eachindex(pmcres.particles) .- 1, map(median, pmcres.particles), marker = true, lw = 1.5, label = "Median")
+        plot!(eachindex(pmchist.particles) .- 1, map(median, pmchist.particles), marker = true, lw = 1.5, label = "Median")
     end
 
     posterior_check = posterior_predictions(f);

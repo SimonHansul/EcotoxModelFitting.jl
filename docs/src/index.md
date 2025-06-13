@@ -5,7 +5,7 @@
 
 ## Configuring a fitting problem 
 
-A fitting problem is defined by initializing a `ModelFit` structure, 
+A fitting problem is defined by initializing a `PMCBackend` structure, 
 and filling in the arguments needed to fully specify the problem. <br>
 Once that is done, there are several methods available to conduct the actual calibration 
 (e.g. Population Monte Carlo, local optimization, global optimization).
@@ -87,11 +87,11 @@ to select the final time-point of the control in the dataframe `df`, assuming th
 
 `EcotoxModelFitting.jl` allows you to assign weights to data on two levels: 
 
-- On the level of the response variable, through the argument `data_weights` in the `ModelFit` constructor
+- On the level of the response variable, through the argument `data_weights` in the `PMCBackend` constructor
 - On the level of an individual variable, by adding a column `observation_weight` to the raw data.
 
-The `data_weights` and `observation_weight`s will be normalized individually during construction of the `ModelFit` object. <br>
-Changing either one on an existing `ModelFit` instance requires to re-call `generate_loss_function`.
+The `data_weights` and `observation_weight`s will be normalized individually during construction of the `PMCBackend` object. <br>
+Changing either one on an existing `PMCBackend` instance requires to re-call `generate_loss_function`.
 
 
 ### Compatability with other modelling software 

@@ -47,7 +47,7 @@ using EcotoxModelFitting
         return plot()
     end
 
-    f = ModelFit(;
+    f = PMCBackend(;
         prior = prior, 
         data = data, 
         simulator = simulate_data, 
@@ -59,7 +59,7 @@ using EcotoxModelFitting
         loss_functions = EcotoxModelFitting.loss_euclidean
     )
 
-    pmcres = run_PMC!(f; n = 100_000, t_max = 3, q_dist = 1000/100_000)
+    pmchist = run_PMC!(f; n = 100_000, t_max = 3, q_dist = 1000/100_000)
 
     posterior_mean
     posterior_var
@@ -79,5 +79,5 @@ using EcotoxModelFitting
     @test 0.95 <= rel_posterior_var <= 1.05
 end
 
-plot(Normal(posterior_mean, sqrt(posterior_var)))
-plot!(Normal(posterior_mean_pmc, sqrt(posterior_var_pmc)))
+plot(Normal(posterior_mean, sqrt(posterior_var)), label = "Analytical posterior")
+plot!(Normal(posterior_mean_pmc, sqrt(posterior_var_pmc)), label = "ABC posterior")

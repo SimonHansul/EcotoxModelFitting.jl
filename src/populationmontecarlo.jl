@@ -25,7 +25,7 @@ function norm(x)
 end
 
 
-function posterior_predictions(f::ModelFit, n::Int64 = 100)
+function posterior_predictions(f::PMCBackend, n::Int64 = 100)
 
     predictions = Vector{Any}(undef, n)
     samples = Vector{Any}(undef, n)
@@ -54,7 +54,7 @@ end
 
 """
     run_PMC!(
-        f::ModelFit; 
+        f::PMCBackend; 
         dist = f.loss, 
         n::Int = 1000,
         n_init::Union{Nothing,Int} = nothing,
@@ -71,7 +71,7 @@ as described by Beaumont et al. (2009).
 
 args
 
-- `f`: A `ModelFit` object, containing simulator, priors, data and loss function. 
+- `f`: A `PMCBackend` object, containing simulator, priors, data and loss function. 
 
 kwargs
 
@@ -86,8 +86,8 @@ kwargs
 - `logweights`: Option to apply log-transformation to the PMC weights. Note that this will introduce an error on the posterior variance. 
 """
 function run_PMC!(
-    f::ModelFit; 
-    dist = f.loss, 
+    pmc::PMCBackend; 
+    dist = pmc.loss, 
     n::Int = 1000,
     n_init::Union{Nothing,Int} = nothing,
     q_dist::Float64 = .1,
@@ -100,6 +100,10 @@ function run_PMC!(
     logweights::Bool = false
     )::NamedTuple
 
+    if logweights
+        @warn "Using logweights will result in biased posteriors. Use with care."
+    end
+
     t = 0
 
     all_particles = Matrix{Float64}[]
@@ -108,8 +112,8 @@ function run_PMC!(
     all_vars = Vector{Float64}[]
     all_thresholds = Vector{Float64}[]
 
-    lower = minimum.(f.prior.dists)
-    upper = maximum.(f.prior.dists)
+    lower = minimum.(pmc.prior.dists)
+    upper = maximum.(pmc.prior.dists)
 
     if isnothing(n_init)
         n_init = n
@@ -136,11 +140,11 @@ function run_PMC!(
                 losses = Vector{Union{Float64,Vector{Float64}}}(undef, n_init)
 
                 @showprogress @threads for i in 1:n_init
-                    θ = rand.(f.prior.dists) # take a prior sample
+                    θ = rand.(pmc.prior.dists) # take a prior sample
                     L = 0. # initialize loss for this sample
                     for eval in 1:evals_per_sample
-                        sim = f.simulator(θ) # run the simulation
-                        L += dist(f.data, sim) # add up losses
+                        sim = pmc.simulator(θ) # run the simulation
+                        L += dist(pmc.data, sim) # add up losses
                     end
                     particles[i] = θ
                     losses[i] = L/evals_per_sample # average the losses retrieved from repeated simulations
@@ -231,7 +235,7 @@ function run_PMC!(
                 end
 
                 # calculate the weight 
-                weight_num = prior_prob(f.prior, θ_i) # numerator is the prior probability
+                weight_num = prior_prob(pmc.prior, θ_i) # numerator is the prior probability
                 weight_denom = 1e-300 # initialize denominator
 
                 # set ω_it ∝ π(θ)/∑(ω_jt-1 K(θ_i | θ_j, τ^2)} (cf. Beaumont et al. 2009)
@@ -250,8 +254,8 @@ function run_PMC!(
                 # run the simulations
                 L = 0.
                 for eval in 1:evals_per_sample
-                    sim = f.simulator(θ_i)
-                    L += dist(f.data, sim) # generate ρ(x,y)
+                    sim = pmc.simulator(θ_i)
+                    L += dist(pmc.data, sim) # generate ρ(x,y)
                 end
 
                 particles[i] = θ_i
@@ -296,7 +300,7 @@ function run_PMC!(
                     "losses" => all_losses,
                     "variances" => all_vars, 
                     "thresholds" => all_thresholds,
-                    "prior" => f.prior,
+                    "prior" => pmc.prior,
                     "settings" => Dict(
                         "n" => n, 
                         "n_init" => n_init, 
@@ -307,31 +311,31 @@ function run_PMC!(
         end
     end
 
-    f.accepted = all_particles[end]
-    f.weights = all_weights[end]
-    f.losses = all_losses[end]
+    pmc.accepted = all_particles[end]
+    pmc.weights = all_weights[end]
+    pmc.losses = all_losses[end]
     
     if !isnothing(savetag)
         @info "Saving results to $(joinpath(savedir, savetag))"
     
-        samples = DataFrame(f.accepted', f.prior.labels)
-        samples[!,:weight] .= f.weights
-        samples[!,:loss] = vcat(f.losses...)
+        samples = DataFrame(pmc.accepted', pmc.prior.labels)
+        samples[!,:weight] .= pmc.weights
+        samples[!,:loss] = vcat(pmc.losses...)
         
-        settings = DataFrame(n = n, q_dist = q_dist, t_max = t_max, priors = f.prior.dists)
+        settings = DataFrame(n = n, q_dist = q_dist, t_max = t_max, priors = pmc.prior.dists)
 
         CSV.write(joinpath(savedir, "samples.csv"), samples)
         CSV.write(joinpath(savedir, "settings.csv"), settings)
 
         priors_df = DataFrame(
-            param = f.prior.labels, 
-            dist = f.prior.dists
+            param = pmc.prior.labels, 
+            dist = pmc.prior.dists
         )
         CSV.write(joinpath(savedir, "priors.csv"), priors_df)
 
         # saving posterior summary to csv + tex  
         _ = generate_posterior_summary(
-            f;
+            pmc;
             tex = !isnothing(savetag),
             savedir = savedir,
             savetag = savetag,
@@ -340,21 +344,34 @@ function run_PMC!(
 
     end
 
-    return (
+    pmchist = (
         particles = all_particles, 
         weights = all_weights, 
         dists = all_losses, 
         vars = all_vars
     )
+
+    pmc.pmchist = pmchist
+
+    return pmchist
 end
+
+"""
+    run!(pmc::PMCBackend; kwargs....)
+
+Run PMC Backend. See `run_PMC!` for details.
+
+"""
+run!(pmc::PMCBackend; kwargs...) = run_PMC!(pmc::PMCBackend; kwargs...)
+
 
 
 """
-    load_pmcres_from_checkpoint(path::String)
+    load_pmchist_from_checkpoint(path::String)
 
 Recover PMC fitting result from a `checkpoint.jld2`-file.
 """
-function load_pmcres_from_checkpoint(path::String)
+function load_pmchist_from_checkpoint(path::String)
     chk = load(path)
 
     return (
@@ -367,13 +384,14 @@ function load_pmcres_from_checkpoint(path::String)
 end
 
 """
-    load_pmcres_from_checkpoint!(f::ModelFit, path::String)
+    load_pmchist_from_checkpoint!(f::PMCBackend, path::String)
 
 Recover PMC fitting result from a `checkpoint.jld2`-file and assign the content to `f`.
 """
-function load_pmcres_from_checkpoint!(f::ModelFit, path::String)
-    pmcres = load_pmcres_from_checkpoint(path)
-    f.accepted = pmcres.particles[end]
-    f.weights = pmcres.weights[end]
-    f.losses = pmcres.dists[end]
+function load_pmchist_from_checkpoint!(f::PMCBackend, path::String)
+    pmchist = load_pmchist_from_checkpoint(path)
+    f.pmchist = pmchist
+    f.accepted = pmchist.particles[end]
+    f.weights = pmchist.weights[end]
+    f.losses = pmchist.dists[end]
 end
