@@ -1,7 +1,7 @@
 # EcotoxModelFitting.jl: Fitting dynamic models of ecotoxicological effects to data
 
 This package currently focusses on application of likelihood-free Bayesian inference to fitting problems in ecotoxicology. <br>
-Other methods may be incorporated in the future through third-party packages. <br>
+A goal for future development is to support multiple backends through a unified interface. <br>
 
 
 The API is designed to deal with some practical nuisances which frequently occur in ecotox model fitting, such as fitting to, multiple endpoints, incorporating a combination of time-resolved and other data, incorporating data which is scattered over multiple (plain text) files, 
