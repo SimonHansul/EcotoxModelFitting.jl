@@ -69,6 +69,18 @@ function clean(df::AbstractDataFrame)
 end
 
 
+function is_finite_row(
+    row::DataFrameRow
+    )::Bool
+
+    return sum(.!(check_for_nonfinite.(Vector(row)))) == 0
+
+end
+
+check_for_nonfinite(x::Number)::Bool = isfinite(x)
+check_for_nonfinite(x::Any)::Bool = true
+
+
 """
 Given a vector of simulation outputs, where each simulation is a `Dict`, 
 this will concatenate a given key across all vector elements. 
