@@ -56,6 +56,20 @@ function as_table(p::ComponentArray; printtable = true)
 end
 
 """
+    clean(df::AbstractDataFrame)
+
+Removes all rows with any non-finite and missing values from dataframe. 
+"""
+function clean(df::AbstractDataFrame)
+    
+    valid_idxs = [is_finite_row(row) for row in eachrow(df)]
+
+    return dropmissing(df[valid_idxs,:])
+
+end
+
+
+"""
 Given a vector of simulation outputs, where each simulation is a `Dict`, 
 this will concatenate a given key across all vector elements. 
 
