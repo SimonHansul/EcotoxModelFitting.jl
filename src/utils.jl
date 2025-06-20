@@ -56,8 +56,6 @@ function as_table(p::ComponentArray; printtable = true)
 end
 
 """
-$(TYPEDSIGNATURES)
-
 Given a vector of simulation outputs, where each simulation is a `Dict`, 
 this will concatenate a given key across all vector elements. 
 
