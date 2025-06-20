@@ -63,3 +63,8 @@ However, I am planning to provide convenience cases for some standard cases (e.g
     - For constant computational effort, this led to a massive increase in the posterior retrodictive precision.
     - Early rejection should be incorporated into convenience functions for standard cases (Daphnid reproduction test)
 - Added `logweights` argument to `run_PMC!`. This is a hotfix and should eventually not be needed anymore. 
+
+
+### v0.1.8
+
+- added the `extract_simkey` function, making it easier to convert vectors of dicts of dataframes into a single dataframe, based on the dict key.

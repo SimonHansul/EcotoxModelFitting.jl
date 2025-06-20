@@ -54,3 +54,25 @@ function as_table(p::ComponentArray; printtable = true)
 
     return df
 end
+
+"""
+$(TYPEDSIGNATURES)
+
+Given a vector of simulation outputs, where each simulation is a `Dict`, 
+this will concatenate a given key across all vector elements. 
+
+For example:
+
+```
+sims = [simulator(p) for _ in 1:10] # run some simulator 10 times
+sims[1] # --> this is a dict of dataframes
+exctract_simkey(sims, :larvae) # this returns a single dataframe
+```
+
+"""
+function extract_simkey(sims::AbstractVector, key::Symbol)::DataFrame
+    return filter(!isnothing, sims) |> 
+    x -> map(x->x[key], x) |> 
+    x -> vcat(x...) |> 
+    clean
+end

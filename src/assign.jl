@@ -1,6 +1,8 @@
 #assign.jl
 #functions to assign values to parameter vectors (given as ComponentArrays) from various sources
 
+using EcotoxModelFitting
+
 function assign_value_by_label!(p, label, value)::Nothing
 
     labels = ComponentArrays.labels(p)
