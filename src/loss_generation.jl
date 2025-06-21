@@ -85,8 +85,6 @@ function generate_loss_function(f::ModelFit)::Function
                             nominal_lenghts[i] # nominal number of observations
                             )
 
-                            #println((j, var, f.response_vars[i], losses[idx]))
-
                     # if data is time-resolved and has additional grouping variables, 
                     # we have to calculuate the loss for each grouping variable and then sum up the losses
                     # this is necessary so that we don't mix up different time series when the error model takes temporal dependency into account
@@ -100,7 +98,7 @@ function generate_loss_function(f::ModelFit)::Function
                                     loss = f.loss_functions[i][j](
                                         Vector{Float64}(df[:,Symbol("$(var)")]) ./ scale, # simulated values
                                         Vector{Float64}(df[:,Symbol("$(var)_1")]) ./ scale, # observed values
-                                        f.data_weights[i][j] .* eval_df.observation_weight, # weights
+                                        f.data_weights[i][j] .* df.observation_weight, # weights
                                         nominal_lenghts[i] # nominal number of observations
                                     )
                                 )
