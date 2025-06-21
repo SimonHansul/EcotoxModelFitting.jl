@@ -35,7 +35,7 @@ include("prior_check.jl")
 export prior_predictive_check
 
 include("loss_functions.jl") 
-export loss_mse_logtransform, loss_logmse
+export loss_mse_logtransform, loss_logmse, loss_euclidean, loss_euclidean_logtransform
 
 include("loss_generation.jl") 
 
@@ -47,6 +47,8 @@ export generate_posterior_summary, bestfit
 
 include("populationmontecarlo.jl")
 export run_PMC!
+
+include("localoptim.jl")
 
 include("assign.jl")
 export assign_values_from_file!
