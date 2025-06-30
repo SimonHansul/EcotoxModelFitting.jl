@@ -14,7 +14,7 @@ To this end, the package currently delivers
 Upcoming features will be 
 
 - A more generic interface to switch between different fitting backends (PMC-ABC, local optmization, global optimization, possibly MCMC)
-- A more constent I/O interface
+- A more consistent I/O interface
 
 >[!WARNING]
 >We are currently at version 0.1.x.
