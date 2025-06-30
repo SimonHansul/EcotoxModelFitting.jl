@@ -1,6 +1,8 @@
 # EcotoxModelFitting.jl: Interface to define model fitting problems for dynamic models in ecotoxicology 
 
-The goal of this package is define and solve fitting problems frequently encountered in ecotoxicology, such as
+The goal of this package is define and solve fitting problems for the dynamic modelling of ecotoxicological effects. 
+
+This includes
 
 - fitting to multiple response variables
 - fitting to a mix of time-resolved and non-resolved data
