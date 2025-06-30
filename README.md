@@ -4,7 +4,7 @@ The goal of this package is define and solve fitting problems frequently encount
 
 - fitting to multiple response variables
 - fitting to a mix of time-resolved and non-resolved data
-- dealing with limited amounts of data, parameter uncertainty
+- dealing with limited amounts of data and parameter uncertainty
 
 To this end, the package currently delivers 
 
