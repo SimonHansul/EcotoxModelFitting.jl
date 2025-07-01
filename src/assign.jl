@@ -39,3 +39,18 @@ function assign_values_from_file!(p, file; exceptions::AbstractDict)::Nothing
 
     return nothing
 end
+
+
+"""
+    assign!(p::ComponentVector, params::ComponentVector)
+
+Assign values in `params` to `p`. <br>
+Both arguments can be arbitrarily nested.
+"""
+function assign!(p::ComponentVector, params::ComponentVector)
+
+    for (label,value) in zip(ComponentArrays.labels(params), params)
+        assign_value_by_label!(p, label, value)
+    end
+
+end
