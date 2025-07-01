@@ -36,3 +36,4 @@ Upcoming features will be
 ### v0.1.11
 
 - added `quantitative_evaluation` function
+- added `assign!` function to assign values from one `ComponentArray` to another
