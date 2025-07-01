@@ -43,7 +43,7 @@ include("posterior_samples.jl")
 export posterior_sample, posterior_sample!
 
 include("diagnostics.jl")
-export generate_posterior_summary, bestfit
+export generate_posterior_summary, bestfit, quantitative_evaluation
 
 include("populationmontecarlo.jl")
 export run_PMC!

@@ -32,3 +32,7 @@ Upcoming features will be
 ### v0.1.10
 
 - added `define_objective_function` for easier integration with Optim.jl
+
+### v0.1.11
+
+- added `quantitative_evaluation` function
