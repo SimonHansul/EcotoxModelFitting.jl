@@ -77,3 +77,8 @@ Moving towards EcotoxModelFitting 1.0.0: Preparations to support multiple fittin
     - Then we will be able to exploit multiple dispatch to let `setup_modelfit` return an instance of the backend type and simply call `run!(f)` to execute the appropriate method.
     - To maintain backwards compatability, we will keep `ModelFit` as alias for `PMCBackend` for a few more versions
 - What used to be `pmcres` is now `pmchhist`, and is a field of `PMCBackend`. We maintain backwards compatability by letting `run_PMC!` return `pmcres`.
+
+### v0.1.9
+
+- Updated `setindex!` method for `Prior` to update all relevant information.
+    - Caveat: a Hyperdist cannot be update with non-Hyperdist, vice versa
