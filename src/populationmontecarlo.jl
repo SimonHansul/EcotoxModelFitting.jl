@@ -178,7 +178,7 @@ function run_PMC!(
 
                 # save data to checkpoint
                 if !(isnothing(savetag))
-                    save(joinpath(savedir, "checkpoint.jld2"), Dict(
+                    save(joinpath(savedir, savetag, "checkpoint.jld2"), Dict(
                         "particles" => all_particles, 
                         "weights" => all_weights, 
                         "losses" => all_losses,
@@ -290,7 +290,7 @@ function run_PMC!(
             
             # save data to checkpoint
             if !(isnothing(savetag))
-                save(joinpath(savedir, "checkpoint.jld2"), Dict(
+                save(joinpath(savedir, savetag, "checkpoint.jld2"), Dict(
                     "particles" => all_particles, 
                     "weights" => all_weights, 
                     "losses" => all_losses,
@@ -320,14 +320,14 @@ function run_PMC!(
         
         settings = DataFrame(n = n, q_dist = q_dist, t_max = t_max, priors = f.prior.dists)
 
-        CSV.write(joinpath(savedir, "samples.csv"), samples)
-        CSV.write(joinpath(savedir, "settings.csv"), settings)
+        CSV.write(joinpath(savedir, savetag, "samples.csv"), samples)
+        CSV.write(joinpath(savedir, savetag, "settings.csv"), settings)
 
         priors_df = DataFrame(
             param = f.prior.labels, 
             dist = f.prior.dists
         )
-        CSV.write(joinpath(savedir, "priors.csv"), priors_df)
+        CSV.write(joinpath(savedir, savetag, "priors.csv"), priors_df)
 
         # saving posterior summary to csv + tex  
         _ = generate_posterior_summary(

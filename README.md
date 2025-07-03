@@ -37,3 +37,7 @@ Upcoming features will be
 
 - added `quantitative_evaluation` function
 - added `assign!` function to assign values from one `ComponentArray` to another
+
+### v0.1.12
+
+- bugfix in IO handling (`savedir`/`savetag` were not applied correctly)

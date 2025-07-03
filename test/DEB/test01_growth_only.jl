@@ -6,6 +6,7 @@ using DataFrames, DataFramesMeta
 using StatsPlots
 using StatsBase
 using Distances
+using Distributions
 using Test
 
 using Revise
@@ -120,11 +121,13 @@ includet("debtest_utils.jl")
     
     begin # running the calibration
         @time pmcres = run_PMC!(
-        f; 
-        n = 50_000, 
-        t_max = 3, 
-        q_dist = 1000/50_000
-        );
+            f; 
+            n = 50_000, 
+            t_max = 3, 
+            q_dist = 1000/50_000, 
+            #savedir = joinpath(pwd(), "test"), 
+            #savetag = "growth_only"
+        )
 
         function plot_pmc_loss(pmcres)
             
