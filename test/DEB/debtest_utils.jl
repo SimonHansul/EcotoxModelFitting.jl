@@ -67,8 +67,6 @@ function load_repro_data_azoxy(;controls_only=true)
 
 end
 
-
-
 # loading data used for unit tests with DEB model fits
 # data on D. magna growth and reproduction from Hansul et al. (2024)
 # Hansul, S., Fettweis, A., Smolders, E., & Schamphelaere, K. D. (2024). Extrapolating metal (Cu, Ni, Zn) toxicity from individuals to populations across Daphnia species using mechanistic models: The roles of uncertainty propagation and combined physiological modes of action. Environmental Toxicology and Chemistry, 43(2), 338-358.
