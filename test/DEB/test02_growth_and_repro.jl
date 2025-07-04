@@ -184,3 +184,4 @@ includet("debtest_utils.jl")
     @test nrmsd_repro < 0.1
 end
 
+EcotoxModelFitting.bestfit(f)

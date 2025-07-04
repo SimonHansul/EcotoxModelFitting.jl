@@ -30,9 +30,13 @@ function load_growth_data_azoxy(;controls_only = true)
         )
     end |> dropmissing
 
+    sort!(growth, :C_W)
+
     return growth
 
 end
+
+
 
 function load_repro_data_azoxy(;controls_only=true)
 
@@ -57,10 +61,12 @@ function load_repro_data_azoxy(;controls_only=true)
     end 
 
     sort!(repro, :t_day)
+    sort!(repro, :C_W)
 
     return repro
 
 end
+
 
 
 # loading data used for unit tests with DEB model fits

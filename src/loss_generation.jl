@@ -100,7 +100,7 @@ function generate_loss_function(f::ModelFit)::Function
                                     loss = f.loss_functions[i][j](
                                         Vector{Float64}(df[:,Symbol("$(var)")]) ./ scale, # simulated values
                                         Vector{Float64}(df[:,Symbol("$(var)_1")]) ./ scale, # observed values
-                                        f.data_weights[i][j] .* eval_df.observation_weight, # weights
+                                        f.data_weights[i][j] .* df.observation_weight, # weights
                                         nominal_lenghts[i] # nominal number of observations
                                     )
                                 )
