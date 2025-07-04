@@ -77,3 +77,63 @@ end
 function bestfit(f::ModelFit)    
     return f.accepted[:,argmin(vec(f.losses))]
 end
+
+
+"""
+    quantitative_evaluation(
+        data::OrderedDict, 
+        sims::AbstractVector;
+        response_vars::Vector{Vector{Symbol}}, 
+        join_vars::Vector{Vector{Symbol}}
+        )
+
+
+Quantitative comparison of simulation output/data, for posterior evaluation.
+Calculates the NRMSD with normalization by IQR. 
+
+## Arguments 
+
+- `data`: Dataset as `OrderedDict`
+- `sims`: Vector of simulation outputs
+- `response_vars`: Observed/simulated variables for which to calculate the NRMSD 
+"""
+function quantitative_evaluation(
+    data::OrderedDict, 
+    sims::AbstractVector;
+    response_vars::Vector{Vector{Symbol}}, 
+    join_vars::Vector{Vector{Symbol}}
+    )
+
+    nrmsdvals = []
+    keyvals = []
+
+    for (i,key) in enumerate(keys(data))
+        
+        data_key = data[key]
+        sim_key = EcotoxModelFitting.extract_simkey(sims, key)
+
+        if length(response_vars[i])>0
+            eval_df = leftjoin(
+                data_key, 
+                sim_key, 
+                on = join_vars[i], 
+                makeunique = true
+            )
+            for var in response_vars[i]
+                nrmsd_var = nrmsd(eval_df[:,var], eval_df[:,"$(var)_1"])
+                push!(nrmsdvals, nrmsd_var)
+                push!(keyvals, key)
+            end
+        end
+    end
+
+    nrmsddf = DataFrame(
+        key = keyvals,
+        response_var = vcat(response_vars...),
+        nrmsd = nrmsdvals
+    )
+
+
+    return nrmsddf
+
+end

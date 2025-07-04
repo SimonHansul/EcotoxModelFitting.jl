@@ -1,3 +1,4 @@
+
 """
     fround(x; sigdigits=2)
 Formatted rounding to significant digits (omitting decimal point when appropriate). 
@@ -53,4 +54,50 @@ function as_table(p::ComponentArray; printtable = true)
     end
 
     return df
+end
+
+"""
+    clean(df::AbstractDataFrame)
+
+Removes all rows with any non-finite and missing values from dataframe. 
+"""
+function clean(df::AbstractDataFrame)
+    
+    valid_idxs = [is_finite_row(row) for row in eachrow(df)]
+
+    return dropmissing(df[valid_idxs,:])
+
+end
+
+
+function is_finite_row(
+    row::DataFrameRow
+    )::Bool
+
+    return sum(.!(check_for_nonfinite.(Vector(row)))) == 0
+
+end
+
+check_for_nonfinite(x::Number)::Bool = isfinite(x)
+check_for_nonfinite(x::Any)::Bool = true
+
+
+"""
+Given a vector of simulation outputs, where each simulation is a `Dict`, 
+this will concatenate a given key across all vector elements. 
+
+For example:
+
+```
+sims = [simulator(p) for _ in 1:10] # run some simulator 10 times
+sims[1] # --> this is a dict of dataframes
+exctract_simkey(sims, :larvae) # this returns a single dataframe
+```
+
+"""
+function extract_simkey(sims::AbstractVector, key::Symbol)::DataFrame
+    return filter(!isnothing, sims) |> 
+    x -> map(x->x[key], x) |> 
+    x -> vcat(x...) |> 
+    clean
 end

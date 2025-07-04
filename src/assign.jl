@@ -1,11 +1,18 @@
 #assign.jl
 #functions to assign values to parameter vectors (given as ComponentArrays) from various sources
 
+using EcotoxModelFitting
+
 function assign_value_by_label!(p, label, value)::Nothing
 
     labels = ComponentArrays.labels(p)
     idx = findfirst(x -> x == label, labels)
     
+    if isnothing(idx)
+        @warn "Did not find $label in parameter vector - skipping."
+        return nothing
+    end
+
     p[idx] = value
 
     return nothing
@@ -31,4 +38,19 @@ function assign_values_from_file!(p, file; exceptions::AbstractDict)::Nothing
     end
 
     return nothing
+end
+
+
+"""
+    assign!(p::ComponentVector, params::ComponentVector)
+
+Assign values in `params` to `p`. <br>
+Both arguments can be arbitrarily nested.
+"""
+function assign!(p::ComponentVector, params::ComponentVector)
+
+    for (label,value) in zip(ComponentArrays.labels(params), params)
+        assign_value_by_label!(p, label, value)
+    end
+
 end

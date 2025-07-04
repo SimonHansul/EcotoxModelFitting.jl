@@ -1,7 +1,7 @@
 name = "EcotoxModelFitting"
 uuid = "11baf4a3-28f5-4d66-8f46-d015c3f5447c"
 authors = ["SimonHansul <simonhansul@gmail.com>"]
-version = "0.1.7"
+version = "0.1.11"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"

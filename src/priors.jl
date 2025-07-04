@@ -157,10 +157,24 @@ end
 
 function setindex!(prior::Prior, value::Union{Distribution,Hyperdist}, param::Union{String,Symbol})
     
+
+function setindex!(prior::Prior, value::Union{Distribution,Hyperdist}, param::Union{String,Symbol})
+    
+    @assert ((value isa Hyperdist) && (prior[param] isa Hyperdist)) || (!(value isa Hyperdist) && !(prior[param] isa Hyperdist)) "Cannot update Hyperdist with non-Hyperdist, vice versa."
+
     index = findfirst(isequal(param), prior.labels)
     @assert index !== nothing "Parameter $param not found in prior object"
 
+    scaled_dist, μ, σ = scaledist(value)
+
     prior.dists[index] = value
+    prior.scaled_dists[index] = scaled_dist
+    prior.μs[index] = μ
+    prior.σs[index] = σ
+
+    prior.is_hyper[index] = value isa Hyperdist
+ 
+end
 
 end
 

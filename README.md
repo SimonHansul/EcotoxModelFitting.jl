@@ -1,65 +1,43 @@
-# EcotoxModelFitting.jl: Fitting dynamic models of ecotoxicological effects to data
+# EcotoxModelFitting.jl: Interface to define model fitting problems for dynamic models in ecotoxicology 
 
-This package currently focusses on application of likelihood-free Bayesian inference to fitting problems in ecotoxicology. <br>
-Other methods may be incorporated in the future through third-party packages. <br>
+The goal of this package is define and solve fitting problems for the dynamic modelling of ecotoxicological effects. 
 
+This includes
 
-The API is designed to deal with some practical nuisances which frequently occur in ecotox model fitting, such as fitting to, multiple endpoints, incorporating a combination of time-resolved and other data, incorporating data which is scattered over multiple (plain text) files, 
-each file containing observations on a single or multiple response variables, etc.   <br>
+- fitting to multiple response variables
+- fitting to a mix of time-resolved and non-resolved data
+- dealing with limited amounts of data and parameter uncertainty
 
-By design, `EcotoxModelFitting.jl` assumes that data is organized in [tidy format](https://www.jstatsoft.org/article/view/v059i10/0).
+To this end, the package currently delivers 
 
+- A `ModelFit` data structure that is used to define a fitting problem. Under the hood, creating a `ModelFit` instance triggers second-order functions which automatically assemble the loss/distance function according to the given response variables, grouping variables, etc. 
+- A mulit-threaded implementation of Population Monte Carlo Approximate Bayesian Computation (PMC-ABC).
 
-`EcotoxModelFitting.jl` is designed to be used in conjunction with [`EcotoxSystems.jl`](https://github.com/simonhansul/ecotoxsystems.jl.git). 
-For simple fitting problems (e.g. a
- single endpoint over time), this pacakge is probably overkill, and one could as well use one of the many parameter inference/optimization packages available for Julia, e.g. Turing.jl, ApproxBayes.jl, Optim.jl. 
+Upcoming features will be 
 
-However, I am planning to provide convenience cases for some standard cases (e.g. daphnid reproduction test data), which would make this package more attractive for routine fitting problems.
+- A more generic interface to switch between different fitting backends (PMC-ABC, local optmization, global optimization, possibly MCMC)
+- A more consistent I/O interface
 
-
-## TODOs
-
-- [x] Unit tests
-- [ ] Implement convenience functions for standard (chronic) tox data
-    - [ ] Daphnia reproduction (OECD 211)
-    - [ ] Collembola reproduction? (OECD 232)
-    - [ ] Algal growth? (OECD 201)
-- [ ] Move metadata handling to its own mini-pacakge
-- [ ] Move everything to do with PMC to its own mini-package -> EcotoxModelFitting.jl should be algorithm-agnostic
-- [ ] Implement standard Bayesian inference with MCMC for standard examples
-- [ ] Add examples for using local optimization 
+>[!WARNING]
+>We are currently at version 0.1.x.
+>Be aware that v1.0.0 will include some major changes to the API which will almost certainly result in incompatabilities.
+>Code that relies on EcotoxModelFitting 0.1.x will have to be refactored in order to update to 1.0.0.
 
 ## Changelog
 
-### v0.1.2
+### v0.1.9
 
-- Updated exports
-- Implemented `exceptions`-argument in `assign_values_from_file!`
-- Implemented option to add weights for individual observations by providing an `observation_weights` column in the data files
+- bugfix in `generate_loss_function`
 
+### v0.1.10
 
-### v0.1.3 
+- added `define_objective_function` for easier integration with Optim.jl
 
-- Added prior heuristics for `dI_max` and `k_M`
+### v0.1.11
 
-### v0.1.4
+- added `quantitative_evaluation` function
+- added `assign!` function to assign values from one `ComponentArray` to another
 
-- Added DrWatson as dependency
+### v0.1.12
 
-### v0.1.5
-
-- Organized source files
-- Removed DrWatson as dependency
-
-### v0.1.6
-
-- Added `evals_per_sample` argument to `run_PMC!`
-- Minor bugfixes
-
-### v0.1.7
-
-- Added Epanechnikov acceptance kernel to the population monte carlo algorithm. validated with test/conjugate/conjugate_normal.jl. error on posterior variance decreased considerably, compared to hard rejection approach
-- Added early rejection to unit tests for DEB growth only, as well as growth+repro
-    - For constant computational effort, this led to a massive increase in the posterior retrodictive precision.
-    - Early rejection should be incorporated into convenience functions for standard cases (Daphnid reproduction test)
-- Added `logweights` argument to `run_PMC!`. This is a hotfix and should eventually not be needed anymore. 
+- bugfix in IO handling (`savedir`/`savetag` were not applied correctly)
