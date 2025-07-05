@@ -20,8 +20,8 @@ Upcoming features will be
 
 >[!WARNING]
 The current version of EcotxoModelfitting is <1.0.0.
->Be aware that v1.0.0 will include some major changes to the API which will almost certainly result in incompatabilities.
->Code that relies on EcotoxModelFitting 0.1.x will have to be refactored in order to update to 1.0.0.
+>v1.0.0 will include some major changes to the API which will almost certainly result in incompatabilities.
+>Code that relies on EcotoxModelFitting 0.1.x will have to be refactored in order to update to 1.0.0. 
 
 ## Changelog
 

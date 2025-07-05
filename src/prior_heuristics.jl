@@ -1,8 +1,6 @@
 # prior_heuristics.jl
 # heuristic functions to help with the definition of (weakly) informative priors based on easily observed quantities
 
-
-
 """
     calc_prior_dI_max(
         S_max::Float64;
