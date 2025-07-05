@@ -7,6 +7,7 @@ This includes
 - fitting to multiple response variables
 - fitting to a mix of time-resolved and non-resolved data
 - dealing with limited amounts of data and parameter uncertainty
+- dealing with stochastic simulation output, e.g. to account for biological variability
 
 To this end, the package currently delivers 
 
