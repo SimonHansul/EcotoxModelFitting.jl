@@ -78,6 +78,7 @@ function bestfit(f::ModelFit)
     return f.accepted[:,argmin(vec(f.losses))]
 end
 
+nrmsd(a,b) = sqrt(sum((a .- b).^2) ./ length(b)) / iqr(b) 
 
 """
     quantitative_evaluation(
