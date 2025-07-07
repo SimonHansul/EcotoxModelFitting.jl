@@ -1,3 +1,25 @@
+"""
+    subset_data(
+        data::OrderedDict,
+        subsetting_function::Function
+        )
+
+Apply `subsetting_function` to all tables in `data`.
+"""
+function subset_data(
+    data::OrderedDict,
+    subsetting_function::Function
+    )
+
+    data_subset = OrderedDict()
+
+    for key in data.keys
+        data_subset[key] = data[key] |> subsetting_function
+
+    end
+
+    return data_subset
+end
 
 """
     fround(x; sigdigits=2)
