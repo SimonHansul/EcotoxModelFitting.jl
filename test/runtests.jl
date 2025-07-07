@@ -1,7 +1,5 @@
-include("conjugate/conjugate_normal.jl") # example using conjugate normal
+include("conjugate/conjugate_normal.jl")
 include("DEB/test01_growth_only.jl")
 include("DEB/test02_growth_and_repro.jl")
-
-##TODO: example using hyperdist
-##TODO: writing results to disc
-##TODO: reading results from disc
+include("DEB/test03_tktd_growthrepro.jl")
+include("utils/write_latex.jl")

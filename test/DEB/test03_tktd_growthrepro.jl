@@ -130,7 +130,7 @@ includet("debtest_utils.jl")
 
     global prior_check = EcotoxModelFitting.prior_predictive_check(
         f, 
-        n = 5000; 
+        n = 1000; 
         compute_loss = false
         );
 
@@ -209,13 +209,13 @@ includet("debtest_utils.jl")
             )
 
         @df repro_treatment_opt lineplot!(
-            plt, subplot = i+length(unique(prior_growth.C_W)),
+            plt, subplot = i+length(unique(retro_growth.C_W)),
             :t_day, :cum_repro, 
             lw = 2, fillalpha = .2, 
             )
         
         @df repro_treatment_retro lineplot!(
-            plt, subplot = i+length(unique(prior_growth.C_W)),
+            plt, subplot = i+length(unique(retro_growth.C_W)),
             :t_day, :cum_repro, 
             lw = 2, fillalpha = .2, 
         )
