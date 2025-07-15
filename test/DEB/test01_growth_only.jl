@@ -192,17 +192,8 @@ end
 
 using DynamicAxisWarping
 
-a = collect(1:100)
-b = a .* rand(Uniform(-0.1, 0.1), length(a))
-
-Distances.euclidean
-
-
-
 distance_wasserstein(a, b, weight = 1, nl = NaN) = weight * wasserstein(a, b)
 distance_dtw(a, b, weight = 1, nl = NaN) = weight * dtw_cost(a, b, Distances.euclidean, 1)
-
-distance_dtw(a,b)
 
 @testset "Fitting to growth data using dtw distance" begin
 
