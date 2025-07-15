@@ -35,7 +35,7 @@ include("prior_check.jl")
 export prior_predictive_check
 
 include("loss_functions.jl") 
-export loss_mse_logtransform, loss_logmse, loss_euclidean, loss_euclidean_logtransform
+export loss_mse_logtransform, loss_logmse, distance_euclidean, loss_euclidean_logtransform
 
 include("loss_generation.jl") 
 
