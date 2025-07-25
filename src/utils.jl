@@ -118,8 +118,23 @@ exctract_simkey(sims, :larvae) # this returns a single dataframe
 
 """
 function extract_simkey(sims::AbstractVector, key::Symbol)::DataFrame
-    return filter(!isnothing, sims) |> 
-    x -> map(x->x[key], x) |> 
-    x -> vcat(x...) |> 
-    clean
+    return filter(!isnothing, sims) |>
+        x -> map(enumerate(x)) do (i, sim)
+            df = sim[key]
+            df.num_sim = fill(i, nrow(df))
+            return df
+        end |>
+        x -> vcat(x...) |>
+        clean
+end
+
+
+"""
+    norm(x::AbstractVector)
+
+Normalize a Vector, accounting for non-finite values.
+"""
+function norm(x::AbstractArray)
+    s = sum(filter(isfinite, x))
+    return s == 0 ? fill(1.0 / length(x), length(x)) : x ./ s
 end

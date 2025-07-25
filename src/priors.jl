@@ -60,7 +60,7 @@ end
 mutable struct Prior <: AbstractPrior
 
     labels::Vector{String}
-    dists::Vector{Union{Hyperdist,Distribution}}
+    distributions::Vector{Union{Hyperdist,Distribution}}
     gendists::Vector{Function}
     is_hyper::Vector{Bool}
     scaled_dists::Vector{Distribution}
@@ -88,7 +88,7 @@ mutable struct Prior <: AbstractPrior
     function Prior(args::Pair...)
 
         labels = String[]
-        dists = Union{Distribution,Hyperdist}[]
+        distances = Union{Distribution,Hyperdist}[]
         gendists = Function[]
         is_hyper = Bool[]
         scaled_dists = Distribution[]
@@ -102,7 +102,7 @@ mutable struct Prior <: AbstractPrior
             scaled_dist, μ, σ = scaledist(pair.second)
 
             push!(labels, pair.first)
-            push!(dists, pair.second)
+            push!(distances, pair.second)
             push!(scaled_dists, scaled_dist)
             push!(μs, μ)
             push!(σs, σ)
@@ -117,7 +117,7 @@ mutable struct Prior <: AbstractPrior
 
         return new(
             labels, 
-            dists, 
+            distances, 
             gendists, 
             is_hyper, 
             scaled_dists, 
@@ -144,7 +144,7 @@ mutable struct Prior <: AbstractPrior
 end
 
 function show(prior::Prior)
-    return OrderedDict(zip(prior.labels, prior.dists))
+    return OrderedDict(zip(prior.labels, prior.distributions))
 end
 
 function getindex(prior::Prior, param::Union{String,Symbol})
@@ -152,7 +152,7 @@ function getindex(prior::Prior, param::Union{String,Symbol})
     index = findfirst(isequal(param), prior.labels)
     @assert index !== nothing "Parameter $param not found in prior object"
     
-    return prior.dists[index]
+    return prior.distributions[index]
 end
 
 function setindex!(prior::Prior, value::Union{Distribution,Hyperdist}, param::Union{String,Symbol})
@@ -167,7 +167,7 @@ function setindex!(prior::Prior, value::Union{Distribution,Hyperdist}, param::Un
 
     scaled_dist, μ, σ = scaledist(value)
 
-    prior.dists[index] = value
+    prior.distributions[index] = value
     prior.scaled_dists[index] = scaled_dist
     prior.μs[index] = μ
     prior.σs[index] = σ
@@ -183,7 +183,7 @@ function add_param!(prior::Prior, pair::Pair)
     scaled_dist, μ, σ = scaledist(pair.second)
 
     push!(prior.labels, pair.first)
-    push!(prior.dists, pair.second)
+    push!(prior.distributions, pair.second)
     push!(prior.scaled_dists, scaled_dist)
     push!(prior.μs, μ)
     push!(prior.σs, σ)
@@ -199,7 +199,7 @@ end
 
 
 function rand(prior::Prior)
-    return [rand(p) for p in prior.dists]
+    return [rand(p) for p in prior.distributions]
 end
 
 

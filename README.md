@@ -11,7 +11,7 @@ This includes
 
 To this end, the package currently delivers 
 
-- A `ModelFit` data structure that is used to define a fitting problem. Under the hood, creating a `ModelFit` instance triggers second-order functions which automatically assemble the loss/distance function according to the given response variables, grouping variables, etc. 
+- A `PMCBackend` data structure that is used to define a fitting problem. Under the hood, creating a `PMCBackend` instance triggers second-order functions which automatically assemble the loss/distance function according to the given response variables, grouping variables, etc. 
 - A mulit-threaded implementation of Population Monte Carlo Approximate Bayesian Computation (PMC-ABC). This algorithm is less efficient than standard Bayesian approaches, but particularly suitable to deal with stochastic simulation output. 
 
 Upcoming features will be 

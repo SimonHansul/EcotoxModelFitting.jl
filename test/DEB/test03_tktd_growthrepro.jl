@@ -114,7 +114,7 @@ includet("debtest_utils.jl")
         "spc.B[1,4]" => truncated(Normal(2,10), 0, Inf)
     )    
 
-    global f = ModelFit(
+    global f = PMCBackend(
         prior = prior,
         defaultparams = defaultparams, 
         simulator = simulator,
@@ -161,7 +161,7 @@ includet("debtest_utils.jl")
         display(plt)
     end
 
-    @time global pmchist = run_PMC!(
+    @time global pmchist = run!(
         f; 
         n = 100_000, 
         t_max = 3, 

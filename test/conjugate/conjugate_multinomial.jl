@@ -67,7 +67,7 @@ import EcotoxModelFitting: ComponentArrays
         return plot()
     end
 
-    f = ModelFit(;
+    f = PMCBackend(;
         prior = prior,
         data = data,
         simulator = simulate_data,
@@ -79,7 +79,7 @@ import EcotoxModelFitting: ComponentArrays
         loss_functions = EcotoxModelFitting.loss_euclidean
     )
 
-    pmcres = run_PMC!(f; n = 100_000, t_max = 3, q_dist = 1000/100_000)
+    pmcres = run!(f; n = 100_000, t_max = 3, q_dist = 1000/100_000)
 
     posterior_mean_pmc = mean(f.accepted, Weights(f.weights))
     posterior_var_pmc = var(f.accepted, Weights(f.weights))
@@ -147,7 +147,7 @@ import EcotoxModelFitting: ComponentVector
 #    # Loss: simple Euclidean loss between observed and simulated counts
 #    loss_fun = EcotoxModelFitting.loss_euclidean
 #
-#    global f = ModelFit(;
+#    global f = PMCBackend(;
 #        prior = prior,
 #        data = data,
 #        simulator = simulate_data,
@@ -159,7 +159,7 @@ import EcotoxModelFitting: ComponentVector
 #        time_var = :cat,
 #    )
 #
-#    pmcres = run_PMC!(f; n = 100_000, t_max = 3, q_dist = 1000 / 100_000)
+#    pmcres = run!(f; n = 100_000, t_max = 3, q_dist = 1000 / 100_000)
 #
 #    ## Compute ABC Posterior Mean
 #    abc_samples = f.accepted

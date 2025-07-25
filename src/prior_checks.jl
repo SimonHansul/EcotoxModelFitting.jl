@@ -1,9 +1,14 @@
+"""
+$(TYPEDSIGNATURES)
 
+Execute prior predictive check for PMC backend. 
+"""
 function prior_predictive_check(
-    f::ModelFit;
-    compute_loss::Bool = true,
+    f::PMCBackend;
+    compute_distances::Bool = true,
     loss = f.loss,
-    n::Int64 = 100
+    n::Int64 = 100,
+    plot_sims = true
     )::NamedTuple
 
     losses = Vector{Union{Float64,Vector{Float64}}}(undef, n)
@@ -19,7 +24,7 @@ function prior_predictive_check(
 
         L = NaN
 
-        if compute_loss
+        if compute_distances
             L = loss(f.data, prediction)
         end
 
@@ -27,6 +32,12 @@ function prior_predictive_check(
         losses[i] = L
         samples[i] = prior_sample
 
+    end
+
+    if plot_sims
+        plt = f.plot_data()
+        f.plot_sims!(plt,  predictions)
+        display(plt)
     end
 
     return (

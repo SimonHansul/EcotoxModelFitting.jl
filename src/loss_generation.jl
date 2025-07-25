@@ -1,33 +1,57 @@
 
-function _check_if_time_resolved(f::ModelFit, i::Int64)::Bool
+function _check_if_time_resolved(f::PMCBackend, i::Int64)::Bool
 
     return f.time_resolved[i]
 
 end
 
-function _check_for_grouping_vars(f::ModelFit, i::Int64)::Bool
+function _check_for_grouping_vars(f::PMCBackend, i::Int64)::Bool
 
     return length(f.grouping_vars[i])>0
 
 end
 
+
 """
-    generate_loss_function(f::ModelFit)::Function
+$(TYPEDSIGNATURES)
+
+Defines data scales as maximum per response variable.
+"""
+function _define_data_scales(
+    f::AbstractBackend
+    )::Vector{Vector{Float64}}
+    
+    scales = [zeros(size(vars)) for vars in f.response_vars]
+
+    for (i,key) in enumerate(f.data.keys)
+        for (j,var) in enumerate(f.response_vars[i])
+            scale = maximum(skipmissing(f.data[key][:,var]))
+            scales[i][j] = scale
+        end
+    end
+
+    return scales
+
+end
+
+
+"""
+    generate_loss_function(f::PMCBackend)::Function
 
 Generates a loss function based on some simplifying assumptions: 
 
     - All data is stored in a dictionary of `DataFrame`s (data tables).
     - The simulation output is give in the same format.
-    - Eeach data table is either time-resolved or not (cf. initialization of `ModelFit`).
+    - Eeach data table is either time-resolved or not (cf. initialization of `PMCBackend`).
     - If the data is time-resolved, it has to have a column whose name is indicated by `time_var`.
     - `f.loss_functions` lists the error models applied for each response variable. 
     - Each data table can have multiple response variables, indicated in `f.response_vars`
 
 By default, the individual losses for each response variable are returned separately. <br>
 """
-function generate_loss_function(f::ModelFit)::Function
+function generate_loss_function(f::PMCBackend)::Function
 
-    join_vars = similar(f.grouping_vars)
+    f.join_vars = similar(f.grouping_vars)
     data_columns = similar(f.grouping_vars)
 
     # for every data table
@@ -36,14 +60,14 @@ function generate_loss_function(f::ModelFit)::Function
         data_columns[i] = Symbol.(names(f.data[key]))
         if f.time_resolved[i]
             # if so, add time to the grouping variables 
-            join_vars[i] = vcat(f.time_var, f.grouping_vars[i]) |> unique
+            f.join_vars[i] = vcat(f.time_var, f.grouping_vars[i]) |> unique
         else
             # otherwise, don't
-            join_vars[i] = f.grouping_vars[i] |> unique
+            f.join_vars[i] = f.grouping_vars[i] |> unique
         end
     end
 
-    data_scales = define_data_scales(f, join_vars)
+    data_scales = _define_data_scales(f)
 
     # get the "nominal length", number of observations in each data table
     nominal_lenghts = [nrow(dropmissing(df)) for df in values(f.data)]
@@ -64,11 +88,11 @@ function generate_loss_function(f::ModelFit)::Function
             is_time_resolved = _check_if_time_resolved(f, i)
             has_grouping_vars = _check_for_grouping_vars(f, i)
 
-            if length(join_vars[i])>0
+            if length(f.join_vars[i])>0
                 # merge the corresponding data with prediction 
                 eval_df = leftjoin(
                     data[key], sim[key], 
-                    on = join_vars[i], 
+                    on = f.join_vars[i], 
                     makeunique = true
                     ) |> dropmissing
                 # for each response variable in the table   
@@ -124,7 +148,7 @@ function generate_loss_function(f::ModelFit)::Function
             end
         end
 
-        return f.combine_losses(losses)
+        return f.combine_dists(losses)
     end
 
     # if the simulation throws an error, the result will be `nothing` => return infinite loss

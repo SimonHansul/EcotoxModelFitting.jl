@@ -8,8 +8,8 @@ using ComponentArrays
 using LaTeXStrings, Latexify
 using JLD2
 using CSV
+using DocStringExtensions
 
-#using Setfield
 using Base.Threads
 import Base: rand
 import Base: getindex
@@ -18,20 +18,25 @@ import Base:show
 
 include("utils.jl")
 
-export ModelFit, run_PMC!, update_data_weights!, generate_fitting_simulator, generate_loss_function, rand, posterior_sample, posterior_sample!, bestfit, generate_posterior_summary, posterior_predictions, assign_value_by_label!, assign_values_from_file!
+export update_data_weights!, generate_fitting_simulator, generate_loss_function, rand, posterior_sample, posterior_sample!, bestfit, generate_posterior_summary, posterior_predictions, assign_value_by_label!, assign_values_from_file!
 
-# reserved column names for the posterior -> cannot be used as parameter names
-const RESERVED_COLNAMES = ["loss", "weight", "model", "chain"]
+include("abstractbackend.jl")
+export AbstractBackend
 
 include("priors.jl")
 export Prior, deftruncnorm
 
+include("simulators.jl")
+
 include("prior_heuristics.jl")
 export calc_prior_dI_max, calc_prior_k_M
 
-include("modelfit.jl")
+include("abstractbackend.jl")
 
-include("prior_check.jl")
+include("backend_pmc.jl")
+export PMCBackend, run!, retrodictions
+
+include("prior_checks.jl")
 export prior_predictive_check
 
 include("loss_functions.jl") 
@@ -45,8 +50,7 @@ export posterior_sample, posterior_sample!
 include("diagnostics.jl")
 export generate_posterior_summary, bestfit, quantitative_evaluation
 
-include("populationmontecarlo.jl")
-export run_PMC!
+
 
 include("localoptim.jl")
 

@@ -47,6 +47,6 @@ function posterior_sample(
 end
 
 # dispatches to Matrix method
-function posterior_sample(f::ModelFit)
+function posterior_sample(f::PMCBackend)
     return posterior_sample(f.accepted, f.weights)
 end
