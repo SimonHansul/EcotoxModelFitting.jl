@@ -37,11 +37,8 @@ function loss_euclidean_logtransform(a::Vector{Float64}, b::Vector{Float64}, wei
     return missing_values_penalty(nominal_length, length(b)) * sqrt(sum(weight .* (log10.(a .+ 1) .- log10.(b .+ 1)).^2))
 end
 
-
-#function loss_dtw(a::Vector{Float64}, b::Vector{Float64}, nominal_length::int = length(b))::Float64
-#
-#
-#end
+const distance_euclidean = loss_euclidean
+const distance_euclidean_logtransform = loss_euclidean_logtransform
 
 
 # log mean relative error

@@ -34,9 +34,10 @@ function prior_predictive_check(
 
     end
 
-    if plot_sims
+    if plot_sims && !isnothing(f.plot_data)
         plt = f.plot_data()
         f.plot_sims!(plt,  predictions)
+        f.diagnostic_plots[:prior_check] = plt
         display(plt)
     end
 

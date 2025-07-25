@@ -1,4 +1,5 @@
 module EcotoxModelFitting
+
 using Distributions
 using DataFrames, DataFramesMeta
 using ProgressMeter
@@ -9,8 +10,9 @@ using LaTeXStrings, Latexify
 using JLD2
 using CSV
 using DocStringExtensions
-
+using Optim
 using Base.Threads
+
 import Base: rand
 import Base: getindex
 import Base: setindex!
@@ -49,8 +51,6 @@ export posterior_sample, posterior_sample!
 
 include("diagnostics.jl")
 export generate_posterior_summary, bestfit, quantitative_evaluation
-
-
 
 include("localoptim.jl")
 

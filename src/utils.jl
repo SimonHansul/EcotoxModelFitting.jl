@@ -138,3 +138,4 @@ function norm(x::AbstractArray)
     s = sum(filter(isfinite, x))
     return s == 0 ? fill(1.0 / length(x), length(x)) : x ./ s
 end
+

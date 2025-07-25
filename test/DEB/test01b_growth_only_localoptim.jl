@@ -124,16 +124,11 @@ end
     @test true
 end
 
-@testset "Prior check with PMC backend" begin
-    global prior_check = EcotoxModelFitting.prior_predictive_check(
-        f;
-        n = 1000
-        );
+@testset "Converting PMC to LocalOptim backend" begin
+    
+end
 
-    @test true
-end;
-
-@testset "Fitting to growth data using PMC" begin
+@testset "Fitting to growth data using NelderMead" begin
 
     # remove old files if present
     if isdir(savedir)

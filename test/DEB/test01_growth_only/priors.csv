@@ -1,5 +1,0 @@
-param,dist
-spc.dI_max,"Truncated(Normal{Float64}(μ=7.355990966129295, σ=14.71198193225859); lower=0.0, upper=Inf)"
-spc.k_M,"Truncated(Normal{Float64}(μ=0.17787000000000008, σ=0.17787000000000008); lower=0.0, upper=Inf)"
-spc.eta_AS,"Truncated(Normal{Float64}(μ=0.5, σ=0.5); lower=0.0, upper=1.0)"
-spc.kappa,"Truncated(Normal{Float64}(μ=0.539, σ=0.539); lower=0.0, upper=1.0)"

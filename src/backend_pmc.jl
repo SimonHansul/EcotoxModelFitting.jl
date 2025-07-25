@@ -19,8 +19,8 @@ mutable struct PMCBackend <: AbstractBackend
     join_vars::Vector{Vector{Symbol}} # complete set of columns names which are needed to correctly match simulations with data
     data_weights::Vector{Vector{Float64}}
     time_resolved::Vector{Bool}
-    plot_data::Function
-    plot_sims!::Function
+    plot_data::Union{Nothing,Function}
+    plot_sims!::Union{Nothing,Function}
     distances::Matrix{Float64}
     accepted::Matrix{Float64}
     thresholds::Vector{Float64}
@@ -28,6 +28,7 @@ mutable struct PMCBackend <: AbstractBackend
     combine_dists::Function
     pmchist::NamedTuple
     savedir::Union{Nothing,AbstractString}
+    diagnostic_plots::AbstractDict
 
     """
     $(TYPEDSIGNATURES)
@@ -58,8 +59,8 @@ mutable struct PMCBackend <: AbstractBackend
         data::AbstractDict, 
         response_vars::Vector{Vector{Symbol}},
         time_resolved::Vector{Bool},
-        plot_data::Function,
-        plot_sims!::Function,
+        plot_data::Union{Nothing,Function} = nothing,
+        plot_sims!::Union{Nothing,Function} = nothing,
         data_weights::Union{Nothing,Vector{Vector{Float64}}} = nothing,
         time_var::Union{Nothing,Symbol} = nothing,
         grouping_vars::Union{Nothing,Vector{Vector{Symbol}}} = nothing,
@@ -102,8 +103,12 @@ mutable struct PMCBackend <: AbstractBackend
         normalize_observation_weights!(data)
         
         pmc.data = data
-        plotdat() = plot_data(pmc.data) 
-        pmc.plot_data = plotdat
+        if !isnothing(plot_data)
+            plotdat() = plot_data(pmc.data)
+            pmc.plot_data = plotdat
+        else
+            pmc.plot_data = plot_data
+        end
         pmc.plot_sims! = plot_sims!
         pmc.time_resolved = time_resolved
         pmc.simulator = generate_fitting_simulator(defaultparams, prior, simulator)
@@ -111,6 +116,7 @@ mutable struct PMCBackend <: AbstractBackend
         pmc.combine_dists = combine_dists
         pmc.loss = generate_loss_function(pmc)
         pmc.savedir = savedir
+        pmc.diagnostic_plots = Dict()
 
         return pmc
     end
@@ -255,7 +261,7 @@ function run!(
     paramlabels::Union{Nothing,AbstractDict} = nothing,
     run_diagnostics = true,
     num_retro_sims = 100
-    )::NamedTuple
+    )::Nothing
 
     t = 0
 
@@ -278,7 +284,7 @@ function run!(
         @info "Saving results to $(f.savedir)"
 
         if !isdir(f.savedir)
-            mkdir(f.savedir)
+            mkpath(f.savedir)
         end
     end
     
@@ -470,20 +476,29 @@ function run!(
     if save_results
         @info "Saving results to $(f.savedir)"
     
-        samples = DataFrame(f.accepted', f.prior.labels)
-        samples[!,:weight] .= f.weights
-        samples[!,:loss] = vcat(f.distances...)
+        accepted = DataFrame(f.accepted', f.prior.labels)
+        accepted[!,:weight] .= f.weights
+        accepted[!,:loss] = vcat(f.distances...)
         
-        settings = DataFrame(n = n, q_dist = q_dist, t_max = t_max, priors = f.prior.distributions)
+        settings = DataFrame(
+            n = n, 
+            q_dist = q_dist, 
+            t_max = t_max, 
+            priors = f.prior.distributions
+            )
 
-        CSV.write(joinpath(f.savedir, "pmc_samples.csv"), samples)
+        CSV.write(joinpath(f.savedir, "pmc_accepted.csv"), accepted)
         CSV.write(joinpath(f.savedir, "pmc_settings.csv"), settings)
 
         priors_df = DataFrame(
             param = f.prior.labels, 
             dist = f.prior.distributions
         )
-        CSV.write(joinpath(f.savedir, "priors.csv"), priors_df)
+
+        CSV.write(
+            joinpath(f.savedir, "priors.csv"), 
+            priors_df
+            )
 
         # saving posterior summary to csv + tex  
         _ = generate_posterior_summary(
@@ -506,53 +521,83 @@ function run!(
     if run_diagnostics
         _run_diagnostics(
             f; 
-            num_retro_sims = num_retro_sims, 
-            savedir = f.savedir 
+            num_retro_sims = num_retro_sims
             )
     end
 
-    return f.pmchist
+    return nothing
 end
 
 function plot_retrodictions(
     f::PMCBackend;
-    num_retro_sims::Int64 = 100, 
-    savedir::Union{Nothing,AbstractString} = nothing
-    )
+    num_retro_sims::Int64 = 100
+    )::Nothing
 
-    save_results = !isnothing(savedir)
     sims = retrodictions(f; n = num_retro_sims)
 
-    plt = f.plot_data()
-    f.plot_sims!(plt, sims.retrodictions)
-    display(plt)
+    if !isnothing(f.plot_data)
+        plt = f.plot_data()
+        f.plot_sims!(plt, sims.retrodictions)
+        f.diagnostic_plots[:retrodictions] = plt
+    end
+    
+    return nothing
+end
+
+
+function tabulate_progress(f::PMCBackend)::Nothing
+
+    pmcsteps = eachindex(f.pmchist.particles) .- 1
+
+    bestfits = [p[:,argmin(vec(d))] for (p,d) in zip(f.pmchist.particles, f.pmchist.distances)] |> 
+    x -> hcat(x...)' |>
+    x -> DataFrame(
+        hcat(pmcsteps, x),
+        vcat("pmcstep", f.prior.labels)
+    )
+
+    posterior_variances = [mapslices(x -> var(x, Weights(f.pmchist.weights[i])), f.pmchist.particles[i], dims = 2) for i in eachindex(f.pmchist.particles)] |>
+    x -> hcat(x...)' |>
+    x -> DataFrame(
+        hcat(pmcsteps, x),
+        vcat("pmcstep", f.prior.labels)
+    )
+
+
+    if !isnothing(f.savedir)
+        CSV.write(joinpath(f.savedir, "pmc_bestfits.csv"), bestfits)
+        CSV.write(joinpath(f.savedir, "pmc_posterior_variances.csv"), posterior_variances)
+    end
+
+    return nothing
 end
 
 function _run_diagnostics(
     f::PMCBackend; 
-    num_retro_sims = 100,
-    savedir = nothing,
-    )
+    num_retro_sims = 100
+    )::Nothing
 
     _ = plot_retrodictions(
         f; 
-        num_retro_sims = num_retro_sims, 
-        savedir = savedir
+        num_retro_sims = num_retro_sims
         )
 
-   # _ = plot_pmctrace(f)
-
+    _ = tabulate_progress(f)
+    
+    return nothing
 end
 
 const run_PMC! = run! # this alias only exists for backwards compatability
 
 
 """
-    load_pmcres_from_checkpoint(path::String)
+$(TYPEDSIGNATURES)
 
-Recover PMC fitting result from a `checkpoint.jld2`-file.
+Recover state of PMC from a `checkpoint.jld2` file.
+This is intended for short-term recovery, e.g. after a session was unexpectedly interrupted. 
 """
-function load_pmcres_from_checkpoint(path::String)
+function load_pmcres_from_checkpoint(path::String)::NamedTuple
+    
     chk = load(path)
 
     return (

@@ -19,7 +19,6 @@ no matter how many tables, response variables or grouping variables (e.g. treatm
 you have. <br>
 Within `EcotoxModelFitting.jl`, a dataset is an `OrderedDict` of `DataFrame`s, for example: <br>
 
-
 ```Julia
 using DataStructures
 
@@ -64,6 +63,7 @@ An example is given in the [examples subdirectory](https://github.com/SimonHansu
 Providing meta-data is essential for making data re-usable for modelling.
 
 ### Tidy data frames
+
 We assume each `DataFrame` to be organized in tidy format *sensu* Wickham, see the [corresponding publication](https://www.jstatsoft.org/article/view/v059i10/). <br><br>
 
 In short, this means that data tables are *column-oriented*. <br>
@@ -92,17 +92,4 @@ to select the final time-point of the control in the dataframe `df`, assuming th
 
 The `data_weights` and `observation_weight`s will be normalized individually during construction of the `PMCBackend` object. <br>
 Changing either one on an existing `PMCBackend` instance requires to re-call `generate_loss_function`.
-
-
-### Compatability with other modelling software 
-
-Some modelling tools, particularly those developed in MATLAB, assume a column-oriented format. <br>
-To begin with, this makes the format assumed by `EcotoxModelFitting.jl` incompatible with that of some other tools. <br>
-I nevertheless believe that it is a good idea to store data following tidy data principles, 
-even if you end up using a software tool which requires a column-oriented format. <br>
-There are multiple reasons for this, but my main reason is that, if your data is in tidy format to begin with, 
-it is relatively easy to bring it into any reasonable format using [reshaping operations](https://dataframes.juliadata.org/stable/man/reshaping_and_pivoting/). <br>
-In my experience, performing the inverse transformation is much more cumbersome and, 
-most importantly, requires more manual data manipulation. 
-This is time-consuming, error-prone and not reproducible.
 

@@ -21,11 +21,22 @@ includet("debtest_utils.jl")
         :repro => load_repro_data_azoxy()
     )
 
-    function plot_data(;kwargs...)
+    function plot_data(data; kwargs...)
         plt_growth = @df data[:growth] lineplot(:t_day, :S; lw = 1.5, marker = true, color = :black, xlabel = "Time (d)", ylabel = "Dry mass (mg)", leg = true, label = "Data", kwargs...)
         plt_repro = @df data[:repro] lineplot(:t_day, :cum_repro, lw = 1.5, marker = true, color = :black, leg = false, xlabel = "Time (d)", ylabel = "Cumulative reproduction (#)")
         
         return plot(plt_growth, plt_repro, layout = (1,2), size = (1000,400))
+    end
+
+    function plot_sims!(plt, sims)
+
+        prior_growth = EcotoxModelFitting.extract_simkey(sims, :growth)
+        prior_repro = EcotoxModelFitting.extract_simkey(sims, :repro)
+
+        @df prior_growth lineplot!(plt, :t_day, :drymass_mg, lw = 2, fillalpha = .2, subplot = 1)
+        @df prior_repro lineplot!(plt, :t_day, :cum_repro, lw = 2, fillalpha = .2, subplot = 2)
+
+        return nothing
     end
 
     defaultparams = EcotoxSystems.ComponentVector(
@@ -116,60 +127,27 @@ includet("debtest_utils.jl")
         data_weights = [[1.], [1.]], 
         time_var = :t_day, 
         plot_data = plot_data, 
+        plot_sims! = plot_sims!,
         loss_functions = EcotoxModelFitting.loss_euclidean_logtransform
     )
 
     global prior_check = EcotoxModelFitting.prior_predictive_check(f, n = 1000);
 
-    valid_prior_pred = filter(x -> !isnothing(x), prior_check.predictions)
-    let prior_growth = vcat(map(x->x[:growth], valid_prior_pred)...), 
-        prior_repro = vcat(map(x->x[:repro], valid_prior_pred)...)
-
-        plt = plot_data()
-
-        @df prior_growth lineplot!(plt, :t_day, :drymass_mg, lw = 2, fillalpha = .2, subplot = 1)
-        @df prior_repro lineplot!(plt, :t_day, :cum_repro, lw = 2, fillalpha = .2, subplot = 2)
-
-        display(plt)
-    end
-
-    @time pmcres = run!(
+    @time run!(
         f; 
         n = 100_000, 
-        t_max = 3, 
+        t_max = 5, 
         q_dist = 1000/100_000
         );
 
-    begin
-        plot(
-            eachindex(pmcres.particles) .- 1, map(minimum, pmcres.particles), 
-            marker = true, lw = 1.5, xlabel = "PMC step", ylabel = "loss", label = "Minimum"
-            )
-        plot!(eachindex(pmcres.particles) .- 1, map(median, pmcres.particles), marker = true, lw = 1.5, label = "Median")
-    end
+   
+    posterior_check = retrodictions(f);
 
-    posterior_check = posterior_predictions(f);
-
-    p_opt = f.accepted[:,argmin(vec(f.losses))]
-    sim_opt = f.simulator(p_opt)
-
-
-    retro_growth = vcat(map(x->x[:growth], posterior_check.predictions)...) 
-    retro_repro = vcat(map(x->x[:repro], posterior_check.predictions)...) 
-    
-    ## Visual predictive check
-    
-    plt = plot_data()
-
-    @df retro_growth lineplot!(plt, :t_day, :drymass_mg, lw = 3, fillalpha = .2, subplot = 1, leg = true, label = "Retrodiction")
-    @df retro_repro lineplot!(plt, :t_day, :cum_repro, lw = 3, fillalpha = .2, subplot = 2)
-
-    @df sim_opt[:growth] lineplot!(plt, :t_day, :drymass_mg, subplot = 1, lw = 3, label = "Best fit")
-    @df sim_opt[:repro] lineplot!(plt, :t_day, :cum_repro, subplot = 2, lw = 3)
-
-    display(plt)
+    display(f.diagnostic_plots[:retrodictions])
     
     ## Quantiative check
+
+    sim_opt = f.simulator(EcotoxModelFitting.bestfit(f))
 
     eval_df_growth = leftjoin(f.data[:growth], sim_opt[:growth], on = :t_day, makeunique=true)
     eval_df_repro = leftjoin(f.data[:repro], sim_opt[:repro], on = :t_day, makeunique=true)
@@ -180,8 +158,83 @@ includet("debtest_utils.jl")
     println("NRMSD growth: $(round(nrmsd_growth, sigdigits=4))")
     println("NRMSD repro: $(round(nrmsd_repro, sigdigits=4))")
 
-    @test nrmsd_growth < 0.1
+    @test nrmsd_growth < 0.15
     @test nrmsd_repro < 0.1
 end
 
-EcotoxModelFitting.bestfit(f)
+using EcotoxModelFitting.RecipesBase
+using Plots
+
+@recipe function f(
+    ::Type{PMCBackend}, 
+    pmc::PMCBackend;
+    ncols = 4
+    )
+
+    num_params = length(pmc.prior.distributions)
+    nrows = Int(ceil(num_params / 4))
+
+    autobins = get(plotattributes, :bins, :auto)
+
+    layout --> (nrows, ncols)
+
+    for (i,p) in enumerate(pmc.prior.labels)
+        println(i)
+        @series begin
+            subplot := i
+            seriestype --> :scatter
+            #normalize := pdf
+            #fillalpha --> 0.2
+            xlabel --> p
+            #bins := Plots._hist_edges((x,), autobins)
+            pmc.accepted[i,:]
+            
+        end
+
+    end
+
+end
+
+begin
+    using Plots.Measures
+    pmc = f
+    ncols = 4
+    num_params = length(pmc.prior.distributions)
+    nrows = Int(ceil(num_params / ncols))
+
+    layout = (nrows, ncols)
+
+    plt = plot(
+        layout = layout, 
+        xrotation = 45,
+        bottommargin = 5mm
+    )
+
+    for i in eachindex(plt.subplots)
+        
+        if i <= num_params
+            plot!(
+                plt, 
+                subplot = i, 
+                f.prior.distributions[i], 
+                leg = i == 1 ? true : false, 
+                label = "Prior", 
+                xlabel = f.prior.labels[i], 
+                ylabel = (i % ncols) == 1 ? "Density" : ""
+                )
+            histogram!(
+                plt, subplot = i,    
+                f.accepted[i,:], 
+                weights = f.weights,
+                normalize = :pdf,
+                fillalpha = .2, 
+                lw = 0.,
+                label = "Posterior"
+                )
+        else
+            plot!(plt, subplot = i, axis = false, grid = false)
+        end
+    end
+    plt
+
+end

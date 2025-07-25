@@ -555,14 +555,8 @@ deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 version = "1.6.0"
 
-[[deps.DrWatson]]
-deps = ["Dates", "FileIO", "JLD2", "LibGit2", "MacroTools", "Pkg", "Random", "Requires", "Scratch", "UnPack"]
-git-tree-sha1 = "17c9db646d6cb3f68a90053bf46faf5312d13b36"
-uuid = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
-version = "2.18.0"
-
 [[deps.EcotoxModelFitting]]
-deps = ["CSV", "ComponentArrays", "DataFrames", "DataFramesMeta", "DataStructures", "Distributions", "DocStringExtensions", "DrWatson", "JLD2", "LaTeXStrings", "Latexify", "ProgressMeter", "RecipesBase", "StatsBase"]
+deps = ["CSV", "ComponentArrays", "DataFrames", "DataFramesMeta", "DataStructures", "Distributions", "DocStringExtensions", "JLD2", "LaTeXStrings", "Latexify", "Plots", "ProgressMeter", "RecipesBase", "Requires", "StatsBase"]
 path = "../.."
 uuid = "11baf4a3-28f5-4d66-8f46-d015c3f5447c"
 version = "0.2.0"
