@@ -1,5 +1,12 @@
 # EcotoxModelFitting.jl: Interface to define model fitting problems for dynamic models in ecotoxicology 
 
+
+[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://simonhansul.github.io/EcotoxModelFitting.jl/dev/)
+[![CI](https://github.com/SimonHansul/EcotoxSystems.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/SimonHansul/EcotoxModelFitting.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/SimonHansul/EcotoxSystems.jl/graph/badge.svg?token=BL1CFR86M6)](https://codecov.io/gh/SimonHansul/EcotoxModelFitting.jl)
+[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+
+
 The goal of this package is define and solve fitting problems for the dynamic modelling of ecotoxicological effects. 
 
 This includes
