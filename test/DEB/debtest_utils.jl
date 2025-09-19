@@ -1,10 +1,15 @@
+# debtest_utils.jl
+# boilerplate code for unit tests with DEB models
 
 const INIT_AGE = 2. # initial age of test animals (d)
 const EMB_DEV_TIME = 2. # approximate embryonic development time (d), used to shift repro data
 
-# length_to_drymass is relationship AC from Figure 3 in Ku et al.
-# Ku, D., Chae, Y. J., Choi, Y., Ji, C. W., Park, Y. S., Kwak, I. S., ... & Oh, H. J. (2022). Optimal method for biomass estimation in a Cladoceran species, Daphnia magna (Straus, 1820): Evaluating length–weight regression equations and deriving estimation equations using body length, width and lateral area. Sustainability, 14(15), 9216.
 
+"""
+length-drymass relationship is "AC" from Figure 3 in Ku et al.
+
+Ku, D., Chae, Y. J., Choi, Y., Ji, C. W., Park, Y. S., Kwak, I. S., ... & Oh, H. J. (2022). Optimal method for biomass estimation in a Cladoceran species, Daphnia magna (Straus, 1820): Evaluating length-weight regression equations and deriving estimation equations using body length, width and lateral area. Sustainability, 14(15), 9216.
+"""
 function length_to_drymass(length_mm) 
 
     drymass_mg = 0.008 * exp(length_mm) - 0.009
@@ -12,7 +17,6 @@ function length_to_drymass(length_mm)
     return drymass_mg
 
 end
-
 
 # unit test data azoxystrobin/daphnia magna
 
@@ -137,4 +141,100 @@ end
 
 function extract_sumstats_azoxy(simulations::AbstractVector)
     return vcat(extract_sumstats_azoxy.(simulations)...)
+end
+
+function get_input_growthonly()
+
+    data = EcotoxModelFitting.OrderedDict(
+        :growth => load_growth_data_azoxy()
+    )
+
+    function plot_data(data::OrderedDict)
+
+        plt = @df data[:growth] lineplot(:t_day, :S, lw = 1.5, marker = true, color = :black, leg = false, xlabel = "Time (d)", ylabel = "Dry mass (mg)")
+        
+        return plt
+    end
+
+    function plot_sims!(plt, sims)
+        @df EcotoxModelFitting.extract_simkey(sims, :growth) plot!(
+            plt, 
+            :t_day, :S, group = :num_sim, 
+            lw = 3, linealpha = .1, color = 1
+            )
+        return plt
+    end
+
+    defaultparams = deepcopy(EcotoxSystems.defaultparams)
+
+    defaultparams.glb.t_max = maximum(data[:growth].t_day) + 5
+    defaultparams.glb.dX_in = 1e10
+    defaultparams.spc.X_emb_int = 0.01e-3
+
+    function preprocess_params(p; kwargs...)
+        p.spc.dI_max_emb = p.spc.dI_max
+        return p
+    end
+
+    function simulator(p; kwargs...)
+
+        p = preprocess_params(p; kwargs...)
+
+        sim = EcotoxSystems.ODE_simulator(p)
+
+        # convert simulation time to experimental time
+        sim[!,:t_day] = sim.t .- 2 #rand(Uniform(2, 3))
+        sim.t_day = ceil.(sim.t_day) 
+        sim[!,:S] = sim.S
+
+        return EcotoxModelFitting.OrderedDict(:growth => sim)
+
+    end        
+
+    # emprical maximum structure is used to calculate a prior estimate of dI_max
+    S_max_emp = maximum(data[:growth].S)
+    prior_dI_max = calc_prior_dI_max(S_max_emp; cv = 2.)
+
+    # with the values of kappa, dI_max and eta_IA fixed, we can calculate an estimate of k_M
+    prior_k_M = calc_prior_k_M(
+        S_max_emp,
+        defaultparams.spc.kappa,
+        mode(prior_dI_max), 
+        defaultparams.spc.eta_IA
+    )
+
+    # we thus have specific priors for dI_max and k_M, 
+    # the remaining priors are defined around the defualt values
+    prior = Prior(
+        "spc.dI_max" => prior_dI_max, 
+        "spc.k_M" => prior_k_M,
+        "spc.eta_AS" => truncated(Normal(0.5, 0.5), 0, 1),
+        "spc.kappa" => truncated(Normal(0.539, 0.539), 0, 1)
+    )
+
+    return data, defaultparams, simulator, prior, plot_data, plot_sims!
+
+end
+
+
+function setup_pmc_growthonly() 
+    
+    data, defaultparams, simulator, prior, plot_data, plot_sims! = get_input_growthonly()
+    
+    pmc = PMCBackend(
+            prior = prior,
+            defaultparams = defaultparams, 
+            simulator = simulator,
+            data = data, 
+            response_vars = [[:S]], 
+            time_resolved = [true], 
+            data_weights = [[1.]], 
+            time_var = :t_day, 
+            plot_data = plot_data, 
+            plot_sims! = plot_sims!,
+            loss_functions = EcotoxModelFitting.loss_euclidean_logtransform,
+            savedir = savedir
+        )
+
+    return pmc
 end

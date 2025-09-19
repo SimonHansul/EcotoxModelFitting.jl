@@ -33,16 +33,19 @@ include("simulators.jl")
 include("prior_heuristics.jl")
 export calc_prior_dI_max, calc_prior_k_M
 
+include("loss_functions.jl") 
+export loss_mse_logtransform, loss_logmse, loss_euclidean, loss_euclidean_logtransform
+
 include("abstractbackend.jl")
 
 include("backend_pmc.jl")
 export PMCBackend, run!, retrodictions
 
+include("backend_optim.jl")
+export LocalOptimBackend
+
 include("prior_checks.jl")
 export prior_predictive_check
-
-include("loss_functions.jl") 
-export loss_mse_logtransform, loss_logmse, loss_euclidean, loss_euclidean_logtransform
 
 include("loss_generation.jl") 
 
@@ -51,8 +54,6 @@ export posterior_sample, posterior_sample!
 
 include("diagnostics.jl")
 export generate_posterior_summary, bestfit, quantitative_evaluation
-
-include("localoptim.jl")
 
 include("assign.jl")
 export assign_values_from_file!

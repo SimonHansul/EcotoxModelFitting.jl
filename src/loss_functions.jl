@@ -5,42 +5,88 @@
 # we cannot simply use length(a) because the predictions have already been matched with data at this point, 
 # dropping entries for which not both exist 
 
-missing_values_penalty(nominal_length, actual_length) = 1. # (((nominal_length)+1)/(actual_length+1))^2
 
-# mean squared error, including missing values penalty
-# default for nominal length cancels out the penalty if none is given
-function loss_mse(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_length::Int = length(b))::Float64
-    return missing_values_penalty(nominal_length, length(b)) * sum(weight .* (a .- b).^2)/length(a)
+function loss_mse(a::Vector{Float64}, b::Vector{Float64}, weight = 1)::Float64
+    return sum(weight .* (a .- b).^2)/length(a)
 end
 
-function loss_logmse(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_length::Int = length(b))::Float64
-    return log.(missing_values_penalty(nominal_length, length(b)) * sum(weight .* (a .- b).^2)/length(a))
+function loss_logmse(a::Vector{Float64}, b::Vector{Float64}, weight = 1)::Float64
+    return log.(sum(weight .* (a .- b).^2)/length(a))
 end
 
-function loss_sse(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_length::Int = length(b))::Float64
-    return missing_values_penalty(nominal_length, length(b)) * sum(weight .* (a .- b).^2)
+"""
+$(TYPEDSIGNATURES)
+
+Mean squared error with log-transform
+"""
+function loss_mse_logtransform(a::Vector{Float64}, b::Vector{Float64}, weight = 1)::Float64
+    return sum(weight .* (log.(a .+ 1) .- log.(b .+ 1)).^2)/length(a)
 end
 
-function loss_symmbound(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_length::Int = length(b))::Float64
-    return missing_values_penalty(nominal_length, length(b)) * sum(((weight ./ length(a)) .* (((a .- b) .^2)/(mean(a)^2 + mean(b)^2))))
+
+"""
+$(TYPEDSIGNATURES)
+
+Sum of squares
+"""
+function loss_sse(a::Vector{Float64}, b::Vector{Float64}, weight = 1)::Float64
+    return sum(weight .* (a .- b).^2)
 end
 
-function loss_mse_logtransform(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_length::Int = length(b))::Float64
-    return missing_values_penalty(nominal_length, length(b)) * sum(weight .* (log.(a .+ 1) .- log.(b .+ 1)).^2)/length(a)
+"""
+$(TYPEDSIGNATURES)
+
+Sum of squares with log transform
+"""
+function loss_sse_logtransform(a::Vector{Float64}, b::Vector{Float64}, weight = 1)::Float64
+    return sum(weight .* (log.(a .+ 1) .- log.(b .+ 1)).^2)
 end
 
-function loss_euclidean(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_length = length(b))::Float64
-    return missing_values_penalty(nominal_length, length(b)) * sqrt(sum(weight .* (a .- b).^2))
+"""
+$(TYPEDSIGNATURES)
+
+Symmetric bounded loss
+"""
+function loss_symmbound(a::Vector{Float64}, b::Vector{Float64}, weight = 1)::Float64
+    return sum(((weight ./ length(a)) .* (((a .- b) .^2)/(mean(a)^2 + mean(b)^2))))
 end
 
-function loss_euclidean_logtransform(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_length = length(b))::Float64
-    return missing_values_penalty(nominal_length, length(b)) * sqrt(sum(weight .* (log10.(a .+ 1) .- log10.(b .+ 1)).^2))
+"""
+$(TYPEDSIGNATURES)
+
+Euclidean distance
+
+**Aliases:**
+`euclidean_logtransform` 
+"""
+function loss_euclidean(a::Vector{Float64}, b::Vector{Float64}, weight = 1)::Float64
+    return sqrt(sum(weight .* (a .- b).^2))
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Euclidean distance with log-transform
+
+**Aliases:**
+`loss_euclidean_logtransform` 
+"""
+function loss_euclidean_logtransform(a::Vector{Float64}, b::Vector{Float64}, weight = 1)::Float64
+    return sqrt(sum(weight .* (log10.(a .+ 1) .- log10.(b .+ 1)).^2))
 end
 
 const distance_euclidean = loss_euclidean
 const distance_euclidean_logtransform = loss_euclidean_logtransform
 
 
-# log mean relative error
+"""
+$(TYPEDSIGNATURES)
 
-loss_logmre(a, b) = sum(log.((a .+ 1) ./ (b .+ 1)))
+Log of the mean relative error, calculated as 
+
+`weight .* sum(log.((a .+ 1) ./ (b .+ 1)))`
+
+"""
+function loss_logmre(a::Vector{Float64}, b::Vector{Float64}, weight = 1)
+    return weight .* sum(log.((a .+ 1) ./ (b .+ 1)))
+end

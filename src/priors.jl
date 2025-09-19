@@ -50,6 +50,17 @@ function scaledist(dist::Dirac)
     return Dirac(0.), μ, 1
 end
 
+function scaledist(dist::Truncated{Dirac{R}, Discrete, R, R, R}) where R <: Real
+    μ = dist.untruncated.value
+    return Dirac(0.), μ, 1
+end
+
+function scaledist(dist::Uniform{R}) where R <: Real
+    μ = mode(dist)
+    scale = maximum(dist) - minimum(dist)
+    return Uniform(-1, 1), μ, scale
+end
+
 scale_param(x::Float64, μ::Float64, σ::Float64) = (x-μ)/σ
 
 function scaledist(hyper::Hyperdist)

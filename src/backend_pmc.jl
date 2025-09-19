@@ -25,7 +25,7 @@ mutable struct PMCBackend <: AbstractBackend
     accepted::Matrix{Float64}
     thresholds::Vector{Float64}
     weights::Vector{Float64}
-    combine_dists::Function
+    combine_loss::Function
     pmchist::NamedTuple
     savedir::Union{Nothing,AbstractString}
     diagnostic_plots::AbstractDict
@@ -48,7 +48,7 @@ mutable struct PMCBackend <: AbstractBackend
     - `grouping_vars::Union{Nothing,Vector{Vector{Symbol}}}`: Additional grouping variables to take into account when matchin predictions with data. For example chemical concentration, temperature, food level, etc. 
     - `plot_data::Function`: Function to plot the data. 
     - `loss_functions::Union{Vector{Vector{Function}},Function}`: Loss function applied to each response variable in each data key. Can either be a single loss function to use the same for all response variables, or has to be specified explicitly for all response variables.
-    - `combine_dists::Function`: Function that combines loss values for the different response variables into a single loss. Default is `sum`.
+    - `combine_loss::Function`: Function that combines loss values for the different response variables into a single loss. Default is `sum`.
 
 
     """
@@ -65,110 +65,42 @@ mutable struct PMCBackend <: AbstractBackend
         time_var::Union{Nothing,Symbol} = nothing,
         grouping_vars::Union{Nothing,Vector{Vector{Symbol}}} = nothing,
         loss_functions::Union{Vector{Vector{Function}},Function} = loss_euclidean, 
-        combine_dists::Function = sum, # function that combines distances into single value; can also be x->x to retain all distances
+        combine_loss::Function = sum, # function that combines distances into single value; can also be x->x to retain all distances
         savedir::Union{Nothing,AbstractString} = nothing,
         )
 
         pmc = new()
 
-        pmc.prior = prior
-
         @info "
         PMC backend will be set up with $(length(prior.distributions)) estimated parameters: 
-        $(pmc.prior.labels)
+        $(prior.labels)
         "
 
-        pmc.defaultparams = deepcopy(defaultparams)
-        pmc.psim = [deepcopy(pmc.defaultparams) for _ in 1:Threads.nthreads()]
-        pmc.time_var = time_var
-        pmc.response_vars = response_vars
+        setup!(
+            pmc;
+            defaultparams = defaultparams,
+            time_var = time_var, 
+            time_resolved = time_resolved,
+            response_vars = response_vars, 
+            grouping_vars = grouping_vars, 
+            data_weights = data_weights,
+            data = data, 
+            loss_functions = loss_functions,
+            plot_data = plot_data, 
+            plot_sims! = plot_sims!,
+            combine_loss = combine_loss, 
+            savedir = savedir
+        )
 
-        if isnothing(grouping_vars)
-            pmc.grouping_vars = repeat([Symbol[]], length(data))
-        else
-            pmc.grouping_vars = grouping_vars
-        end
-
-        assign_data_weights!(pmc, data_weights)
-
-        for key in keys(data)
-
-            if !("observation_weight" in names(data[key]))
-                @info "No column `observation_weight` found in data key $(key). Assuming uniform weights." 
-                data[key][!,:observation_weight] .= ones(nrow(data[key])) ./ nrow(data[key])
-            end
-
-        end
-        
-        normalize_observation_weights!(data)
-        
-        pmc.data = data
-        if !isnothing(plot_data)
-            plotdat() = plot_data(pmc.data)
-            pmc.plot_data = plotdat
-        else
-            pmc.plot_data = plot_data
-        end
-        pmc.plot_sims! = plot_sims!
-        pmc.time_resolved = time_resolved
-        pmc.simulator = generate_fitting_simulator(defaultparams, prior, simulator)
-        assign_loss_functions!(pmc, loss_functions)
-        pmc.combine_dists = combine_dists
-        pmc.loss = generate_loss_function(pmc)
-        pmc.savedir = savedir
-        pmc.diagnostic_plots = Dict()
-
+        pmc.prior = prior
+        pmc.simulator = generate_fitting_simulator(
+            defaultparams, 
+            prior, 
+            simulator
+            )
+    
         return pmc
     end
-end
-
-
-function normalize_observation_weights!(data::AbstractDict)::Nothing
-
-    norm_const = 0.
-
-    for key in keys(data)
-        norm_const += sum(data[key].observation_weight)
-    end
-
-    for key in keys(data)
-        data[key][!,:observation_weight] ./= norm_const
-    end
-
-    return nothing
-
-end
-
-function assign_data_weights!(f::PMCBackend, data_weights::Union{Nothing,Vector{Vector{Float64}}})::Nothing
-    
-    if isnothing(data_weights)
-        @info "No data weights provided, assuming uniform weights"
-        f.data_weights = [ones(size(v)) for v in f.response_vars] |> x-> x ./ sum(vcat(x...))
-    else
-        @info "Normalizing data weights"
-        f.data_weights = data_weights ./ sum(vcat(data_weights...))
-    end
-
-    return nothing
-
-end
-
-function update_data_weights!(f::PMCBackend, data_weights::Vector{Vector{R}})::Nothing where R <: Real
-    
-    f.data_weights = data_weights |> x -> x ./ sum(vcat(x...))
-    f.loss = generate_loss_function(f)
-
-    return nothing
-end
-
-# separate loss function for each response variable
-function assign_loss_functions!(f::PMCBackend, loss_functions::Vector{Vector{F}}) where F <: Function
-    f.loss_functions = loss_functions
-end
-
-# single loss function is given => assume same for all response variables
-function assign_loss_functions!(f::PMCBackend, loss_functions::F) where F <: Function
-    f.loss_functions = [repeat([loss_functions], length(vars)) for vars in f.response_vars]
 end
 
 
@@ -198,7 +130,10 @@ function effective_sample_size(
 
 end
 
-function retrodictions(f::PMCBackend; n::Int64 = 100)
+function retrodictions(
+    f::PMCBackend; 
+    n::Int64 = 100
+    )
 
     retrodictions = Vector{Any}(undef, n)
     samples = Vector{Any}(undef, n)
@@ -545,7 +480,9 @@ function plot_retrodictions(
 end
 
 
-function tabulate_progress(f::PMCBackend)::Nothing
+function tabulate_progress(
+    f::PMCBackend
+    )::Nothing
 
     pmcsteps = eachindex(f.pmchist.particles) .- 1
 
@@ -562,7 +499,6 @@ function tabulate_progress(f::PMCBackend)::Nothing
         hcat(pmcsteps, x),
         vcat("pmcstep", f.prior.labels)
     )
-
 
     if !isnothing(f.savedir)
         CSV.write(joinpath(f.savedir, "pmc_bestfits.csv"), bestfits)

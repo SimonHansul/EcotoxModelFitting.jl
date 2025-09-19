@@ -105,7 +105,7 @@ end
         "output_test01_growth_only", 
         "pmc"
         )
-
+        
     global f = PMCBackend(
         prior = prior,
         defaultparams = defaultparams, 
@@ -117,12 +117,13 @@ end
         time_var = :t_day, 
         plot_data = plot_data, 
         plot_sims! = plot_sims!,
-        loss_functions = EcotoxModelFitting.loss_euclidean_logtransform,
+        loss_functions = EcotoxModelFitting.distance_euclidean_logtransform,
         savedir = savedir
     )
 
     @test true
 end
+
 
 @testset "Prior check with PMC backend" begin
     global prior_check = EcotoxModelFitting.prior_predictive_check(
@@ -155,10 +156,7 @@ end;
     plt = f.plot_data()
     f.plot_sims!(plt, posterior_check.retrodictions)
 
-    #=
-    ## Quantitative check
-    =#
-
+    # check that the final nrmsd is acceptable
     begin
         p_opt = EcotoxModelFitting.bestfit(f)
         global sim_opt = f.simulator(p_opt)
@@ -180,5 +178,3 @@ end;
     # remove output files
     rm(f.savedir, recursive = true)
 end
-
-

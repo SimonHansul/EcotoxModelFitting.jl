@@ -139,3 +139,5 @@ function norm(x::AbstractArray)
     return s == 0 ? fill(1.0 / length(x), length(x)) : x ./ s
 end
 
+
+const TruncatedDirac = Truncated{Dirac{Float64}, Discrete, Float64, Float64, Float64}
