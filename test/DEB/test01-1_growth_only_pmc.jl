@@ -1,17 +1,6 @@
 using Pkg; Pkg.activate("test/DEB")
 
-using EcotoxSystems
-using CSV
-using DataFrames, DataFramesMeta
-using Plots, StatsPlots
-using StatsBase
-using Distances
-using Distributions
-using Test
-using DataStructures
-using Revise
-using EcotoxModelFitting
-
+include("debtest_setup.jl")
 includet("debtest_utils.jl")
 
 begin # boilerplate
@@ -40,6 +29,7 @@ begin # boilerplate
     defaultparams.glb.t_max = maximum(data[:growth].t_day) + 5
     defaultparams.glb.dX_in = 1e10
     defaultparams.spc.X_emb_int = 0.01e-3
+    defaultparams.spc.Z = Truncated(Normal(1, 0.1), 0, Inf)
 
     function early_reject(p; kwargs...)
         S_max = EcotoxSystems.calc_S_max(p.spc)
@@ -55,7 +45,11 @@ begin # boilerplate
         return p
     end
 
-    function simulator(p; kwargs...)
+    function stochastic_simulator(
+        p;
+        aggregate_results = true,  
+        kwargs...
+        )
 
         p = preprocess_params(p; kwargs...)
         
@@ -63,7 +57,18 @@ begin # boilerplate
             return nothing
         end
 
-        sim = EcotoxSystems.ODE_simulator(p)
+        sim = @replicates EcotoxSystems.ODE_simulator(p) 10
+
+        # optionally, calculate the mean across individuals 
+        # (true by default)
+        if aggregate_results
+            sim = groupby(sim, :t) |> 
+            x-> combine(x) do df
+                DataFrame(
+                    S = mean(df.S)
+                )
+            end
+        end
 
         # convert simulation time to experimental time
         sim[!,:t_day] = sim.t .- 2 #rand(Uniform(2, 3))
@@ -106,10 +111,10 @@ end
         "pmc"
         )
         
-    global f = PMCBackend(
+    global pmc = PMCBackend(
         prior = prior,
         defaultparams = defaultparams, 
-        simulator = simulator,
+        simulator = stochastic_simulator,
         data = data, 
         response_vars = [[:S]], 
         time_resolved = [true], 
@@ -124,10 +129,9 @@ end
     @test true
 end
 
-
 @testset "Prior check with PMC backend" begin
     global prior_check = EcotoxModelFitting.prior_predictive_check(
-        f;
+        pmc;
         n = 1000
         );
 
@@ -143,23 +147,24 @@ end;
 
     begin # running the calibration
         @time run!(
-            f; 
+            pmc; 
             n = 50_000, 
-            t_max = 3, 
-            q_dist = 1000/50_000
+            t_max = 5, 
+            q_dist = 0.1
         );
 
     end
 
-    posterior_check = retrodictions(f)
+    posterior_check = retrodictions(pmc)
 
-    plt = f.plot_data()
-    f.plot_sims!(plt, posterior_check.retrodictions)
+    plt = pmc.plot_data()
+    pmc.plot_sims!(plt, posterior_check.retrodictions)
+    display(plt)
 
     # check that the final nrmsd is acceptable
     begin
-        p_opt = EcotoxModelFitting.bestfit(f)
-        global sim_opt = f.simulator(p_opt)
+        p_opt = EcotoxModelFitting.bestfit(pmc)
+        global sim_opt = pmc.simulator(p_opt)
         eval_df = leftjoin(data[:growth], sim_opt[:growth], on = :t_day, makeunique = true)
         normdev = Distances.nrmsd(eval_df.S, eval_df.S_1)
 
@@ -167,14 +172,46 @@ end;
     end
 
     # check that expected output files are present
-    @test isfile(joinpath(f.savedir, "checkpoint.jld2"))
-    @test isfile(joinpath(f.savedir, "pmc_accepted.csv"))
-    @test isfile(joinpath(f.savedir, "pmc_settings.csv"))
-    @test isfile(joinpath(f.savedir, "pmc_bestfits.csv"))
-    @test isfile(joinpath(f.savedir, "pmc_posterior_variances.csv"))
-    @test isfile(joinpath(f.savedir, "posterior_summary.csv"))
-    @test isfile(joinpath(f.savedir, "priors.csv"))
+    @test isfile(joinpath(pmc.savedir, "checkpoint.jld2"))
+    @test isfile(joinpath(pmc.savedir, "pmc_accepted.csv"))
+    @test isfile(joinpath(pmc.savedir, "pmc_settings.csv"))
+    @test isfile(joinpath(pmc.savedir, "pmc_bestfits.csv"))
+    @test isfile(joinpath(pmc.savedir, "pmc_posterior_variances.csv"))
+    @test isfile(joinpath(pmc.savedir, "posterior_summary.csv"))
+    @test isfile(joinpath(pmc.savedir, "priors.csv"))
 
     # remove output files
-    rm(f.savedir, recursive = true)
+    rm(pmc.savedir, recursive = true)
+end
+
+p_opt = EcotoxModelFitting.bestfit(pmc)
+global sim_opt = [pmc.simulator(p_opt) for _ in 1:100];
+plt = pmc.plot_data()
+pmc.plot_sims!(plt, sim_opt)
+
+p_opt
+
+pmc.diagnostic_plots
+
+
+begin
+    plt = plot(layout = length(pmc.prior.labels))
+
+    for (i,sub) in enumerate(plt.subplots)
+        d = pmc.prior.distributions[i]
+        if !(d isa Hyperdist)
+            plot!(sub, d, color = :black, lw = 2, xlabel = pmc.prior.labels[i])
+        else
+            plot!(sub, d.dist, color = :black, lw = 2)
+        end
+
+        histogram!(
+            sub, 
+            pmc.accepted[i,:], weights = Weights(pmc.weights), 
+            normalize = :pdf,
+            color = :gray, fillalpha = .25
+            )
+    end
+
+    plt
 end

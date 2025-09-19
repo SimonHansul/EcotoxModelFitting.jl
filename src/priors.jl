@@ -5,6 +5,16 @@ abstract type AbstractPrior end
     Hyperdist
 
 A mutable struct for hyper-distributions in multi-level modelling. 
+
+## Example
+
+```julia
+hyper = Hyperdist(
+    σ -> Truncated(Normal(1, σ)),
+    Truncated(Normal(0.1, 1), 0., Inf)
+)
+
+```
 """
 mutable struct Hyperdist
     gendist::Function

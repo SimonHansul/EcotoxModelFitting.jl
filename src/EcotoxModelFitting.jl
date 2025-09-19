@@ -26,7 +26,7 @@ include("abstractbackend.jl")
 export AbstractBackend
 
 include("priors.jl")
-export Prior, deftruncnorm
+export Prior, deftruncnorm, Hyperdist
 
 include("simulators.jl")
 
