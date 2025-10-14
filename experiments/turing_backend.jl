@@ -2,23 +2,14 @@
 # Implementing a MCMC backend via Turing.jl
 =#
 
-using Pkg; Pkg.activate("test")
+using Pkg; Pkg.activate("test/DEB")
+
+include("../test/DEB/debtest_setup.jl")
+include("../test/DEB/debtest_utils.jl")
+
 Pkg.activate("experiemnts")
-Pkg.add("Turing")
 
 using Turing
-
-using EcotoxSystems
-using CSV
-using DataFrames, DataFramesMeta
-using StatsPlots
-using StatsBase
-using Distances
-using Distributions
-using Test
-
-using Revise
-using EcotoxModelFitting
 
 begin # boilerplate
     includet(joinpath("..", "test", "DEB", "debtest_utils.jl"))

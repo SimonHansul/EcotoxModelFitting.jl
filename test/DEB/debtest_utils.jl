@@ -40,8 +40,6 @@ function load_growth_data_azoxy(;controls_only = true)
 
 end
 
-
-
 function load_repro_data_azoxy(;controls_only=true)
 
     repro = CSV.read("test/DEB/data/azoxy_static_repro_tidy.csv", DataFrame) |> 
