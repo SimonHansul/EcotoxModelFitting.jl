@@ -1,5 +1,5 @@
 #=
-# Implementing a MCMC backend via Turing.jl
+# WIP: Implementing a MCMC backend via Turing.jl
 =#
 
 using Pkg; Pkg.activate("test/DEB")
@@ -7,7 +7,7 @@ using Pkg; Pkg.activate("test/DEB")
 include("../test/DEB/debtest_setup.jl")
 include("../test/DEB/debtest_utils.jl")
 
-Pkg.activate("experiemnts")
+Pkg.activate("experiments")
 
 using Turing
 
