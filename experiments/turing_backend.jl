@@ -93,8 +93,8 @@ end
 ## Defining a Turing model
 =#
 
-@model function fitDEB(f::PMCBackend)
-    # Prior distributions.
+@model function fitDEB(f::PMCBaPckend)
+    # priors
 
     dI_max ~ prior_dI_max
     k_M ~ prior_k_M
@@ -102,13 +102,15 @@ end
     kappa ~ truncated(Normal(0.539, 0.539), 0, 1)
     σ ~ Truncated(Cauchy(0, 2), 0.0, Inf)
 
+    # simulation
+
     p = [dI_max, k_M, eta_AS, kappa]
     predicted = f.simulator(p)[:growth] |> 
     x -> x[[t in f.data[:growth].t_day for t in x.t_day],:]
 
-    # compare observations with predictions
+    # compare observations with simulation
     y_pred = Vector{Float64}(predicted.S)  # extract Vector{Float64}
-    y_obs = Vector{Float64}(f.data[:growth].S)  # observed values
+    y_obs = Vector{Float64}(f.data[:growth].S) # observed values
 
     y_obs ~ product_distribution(Normal.(y_pred, σ))
 
