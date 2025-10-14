@@ -7,7 +7,8 @@ using StatsBase
 using ComponentArrays
 using LaTeXStrings, Latexify
 using JLD2
-using CSV
+using Downloads
+using Printf
 
 #using Setfield
 using Base.Threads
@@ -17,6 +18,13 @@ import Base: setindex!
 import Base:show
 
 include("utils.jl")
+export C2K
+
+include("dataset.jl")
+export Dataset, add!, getinfo
+
+include("addmypet_data_retrieval.jl")
+export retrieve_amp_data, parse_mydata
 
 export ModelFit, run_PMC!, update_data_weights!, generate_fitting_simulator, generate_loss_function, rand, posterior_sample, posterior_sample!, bestfit, generate_posterior_summary, posterior_predictions, assign_value_by_label!, assign_values_from_file!
 

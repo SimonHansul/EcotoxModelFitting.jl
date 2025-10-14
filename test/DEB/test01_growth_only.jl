@@ -1,17 +1,3 @@
-using Pkg; Pkg.activate("test/DEB")
-
-using EcotoxSystems
-using CSV
-using DataFrames, DataFramesMeta
-using StatsPlots
-using StatsBase
-using Distances
-using Distributions
-using Test
-
-using Revise
-using EcotoxModelFitting
-
 includet("debtest_utils.jl")
 
 @testset "Fitting to growth data only" begin

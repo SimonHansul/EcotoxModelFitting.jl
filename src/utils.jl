@@ -1,3 +1,6 @@
+
+C2K(T_degC::Real) = T_degC + 273.15  
+
 """
     subset_data(
         data::OrderedDict,
