@@ -27,11 +27,10 @@ transforming the parameter values to quantiles on their marginal scale.
 using Pkg; Pkg.add("StatsBase")
 using StatsBase
 
-begin
-        
+begin    
     u1 = [ecdf(θ1)(x) for x in θ1]  # empirical CDF of Θ1
     u2 = [ecdf(θ2)(x) for x in θ2]  # empirical CDF of Θ2
-end
+end;
 
 #=
 The marginal distributions of u1 and u2 are now U(0,1).
@@ -57,15 +56,11 @@ into standard normal distributions.
 begin
     using Distributions
 
-    # FIXME: this breaks the correlation matrix because we get z=Inf for u=1
-
-    
     r1 = (ordinalrank(θ1) .- 0.5) ./ length(θ1)
     r2 = (ordinalrank(θ2) .- 0.5) ./ length(θ2)
 
     z1 = quantile.(Normal(), r1)
     z2 = quantile.(Normal(), r2)
-
 
     scatter(z1, z2,
         xlabel = "z₁ = Φ⁻¹(u₁)",
@@ -93,16 +88,25 @@ begin
     U = cdf.(Normal(), Z)      # map to uniforms
 
     # map back to your original marginals using empirical quantiles
-    θ1_new = quantile.(θ1, U[:,1])
-    θ2_new = quantile.(θ2, U[:,2])
+    θ1_new = vcat([quantile(θ, U[:,1]) for θ in θ1]...)
+    θ2_new = vcat([quantile(θ, U[:,2]) for θ in θ2]...)
 
-    scatter(
+    marginalscatter(
         θ1_new, θ2_new,
         xlabel = "θ₁",
-        ylabel = "θ₂",
-        title = "Samples from fitted Gaussian copula"
+        ylabel = "θ₂", 
+        label = "Resampled", 
+        markeralpha = .5, markerstrokewidth = 0
     )    
+
+    density!(θ1, subplot = 1)
+    density!(θ1, subplot = 3, permute = (:y, :x))
+
+    scatter!(θ1, θ2, subplot = 2, color = :black, marker = :diamond, alpha = .5, label = "Original samples")
+
 end
 
+
+θ1_new
 
 
