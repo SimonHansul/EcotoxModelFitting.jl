@@ -3,7 +3,7 @@
 =#
 
 using Pkg; Pkg.activate("test")
-Pkg.activate("experiemnts")
+Pkg.activate("experiments")
 Pkg.add("Turing")
 
 using Turing
