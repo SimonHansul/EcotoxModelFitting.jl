@@ -21,7 +21,7 @@ include("utils.jl")
 export C2K
 
 include("dataset.jl")
-export Dataset, add!, getinfo
+export Dataset, add!, getinfo, get_target
 
 include("addmypet_data_retrieval.jl")
 export retrieve_amp_data, parse_mydata
@@ -60,5 +60,8 @@ include("localoptim.jl")
 
 include("assign.jl")
 export assign_values_from_file!
+
+include("io.jl")
+export read_file
 
 end # module EcotoxModelFitting

@@ -1,3 +1,4 @@
+using CSV
 
 const INIT_AGE = 2. # initial age of test animals (d)
 const EMB_DEV_TIME = 2. # approximate embryonic development time (d), used to shift repro data

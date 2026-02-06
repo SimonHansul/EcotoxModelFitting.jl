@@ -45,3 +45,10 @@ The current version of EcotxoModelfitting is <1.0.0.
 ### v0.1.12
 
 - bugfix in IO handling (`savedir`/`savetag` were not applied correctly)
+
+### v0.2.0
+
+- Introduced `Dataset` interface
+    - defined a `get_target` function 
+    - implemented a test for use of Dataset interface + local optim for the minimal DEB case (fit to growth only)
+- `ModelFit`interface is still available for the time being, but will be depracated and removed

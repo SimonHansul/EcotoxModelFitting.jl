@@ -13,8 +13,6 @@ data["tW130"]
 EcotoxModelFitting.download_mydata("Chlamys_islandica")
 
 
-
-
 using Test
 
 @testset "Dataset getindex,setindex!,getinfo" begin

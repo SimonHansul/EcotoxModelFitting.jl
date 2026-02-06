@@ -5,13 +5,18 @@ abstract type AbstractDataset end
 Base.@kwdef mutable struct Dataset <: AbstractDataset 
     metadata::AbstractDict = Dict()
     names::Vector{AbstractString} = AbstractString[]
-    values::Vector{Union{Number,Matrix}} = Union{Number,Matrix}[]
+    values::Vector{Union{Number,Matrix,DataFrame}} = Union{Number,Matrix,DataFrame}[]
+    error_functions::Vector{Function} = Function[]
+    targets_closured::Tuple = ()
     units::Vector{Vector{String}} = Vector{String}[]
     labels::Vector{Vector{String}} = Vector{String}[]
     temperatures::Vector{Number} = Number[]
     temperature_units::Vector{String} = String[]
-    dimensionality_types::Vector{DimensionalityType} = DimensionalityType[]
     bibkeys::Vector{String} = String[]
+    grouping_vars::Vector{Vector{Union{Nothing,Symbol,Int64}}} = Vector{Union{Nothing,Symbol,Int64}}[]
+    response_vars::Vector{Vector{Union{Nothing,Symbol,Int64}}} = Vector{Union{Nothing,Symbol,Int64}}[]
+    time_vars::Vector{Union{Symbol,Int64,Nothing}} = Union{Symbol,Int64,Nothing}[]
+    zerovariate::Vector{Bool} = Bool[]
     comments::Vector{String} = String[]
 end
 
@@ -21,35 +26,25 @@ Add entry to a dataset.
 function add!(
     data::AbstractDataset; 
     name::AbstractString, 
-    value::Union{Number,Matrix},
-    units::Any,#Vector{AbstractString},
-    labels::Any,#::Vector{AbstractString},
+    value::Union{Number,Matrix,DataFrame},
+    units::Any,
+    labels::Any,
     temperature::Number = NaN,
     temperature_unit::AbstractString = "K",
-    dimensionality_type::Union{Nothing,DimensionalityType} = nothing,
+    error_function = sumofsquares,
+    grouping_vars = nothing, 
+    response_vars = nothing,
+    time_var = nothing,
     bibkey = "",
     comment = ""
     )::Nothing
 
-    if isnan(temperature) & (sum([occursin("temp", l) for l in labels]) == 0)
-        @warn "No temperature given for $(name) and no temperature found in labels."
+    if name in data.names
+        error("Data names have to be unique. Got existing name $name.")
     end
 
     if (temperature_unit == "K") && (temperature < 200)
         error("Implausible temperature $(temperature) K given for $(name)")
-    end
-
-    if isnothing(dimensionality_type)
-        if value isa Number
-            @info "Assuming $(name) to be zerovariate"
-            dimenstionality_type = zerovariate
-        elseif (value isa Matrix) && (size(value)[2]==2)
-            @info "Assuming $(name) to be univariate"
-            dimenstionality_type = univariate
-        else
-            @info "Assuming $(name) to be multivariate"
-            dimenstionality_type = multivariate
-        end
     end
 
     if units isa AbstractString
@@ -60,14 +55,58 @@ function add!(
         labels = [labels]
     end
 
+    # input validation for DataFrames
+    if typeof(value) <: DataFrame
+        if !((eltype(grouping_vars) <: Symbol) || (eltype(grouping_vars) <: Integer) || (isnothing(grouping_vars)))
+            error("For data entry $(name), expected grouping variables to be given as Symbols or Integers.")
+        end
+
+        if !((eltype(response_vars) <: Symbol) || (eltype(response_vars) <: Integer))
+            error("For data entry $(name), expected response variables to be given as Symbols or Integers.")
+        end
+
+        if (eltype(grouping_vars) <: Symbol) && (!isempty(grouping_vars))
+            if !(unique([string(x) in names(value) for x in grouping_vars])==[true])
+                error("For data entry $(name), some indicated grouping variable names were not found in the DataFrame.")
+            end
+        end
+
+        if isempty(response_vars)
+            error("For data entry $(name), response variable names need to be specified using `response_vars = [:y1,y2])...`.")
+        end
+
+        if (eltype(response_vars) <: Symbol)
+            if !(unique([string(x) in names(value) for x in response_vars]) == [true])
+                error("For data entry $(name), some indicated response variable names were not found in the DataFrame.")
+            end
+        end
+
+    end
+
+    if isnothing(grouping_vars)
+        grouping_vars = Symbol[]
+    end
+
+    if isnothing(response_vars)
+        response_vars = Symbol[]
+    end
+
+    if (error_function == negloglike_multinomial) && (isnothing(time_var))
+        error("For data entry $(name), `negloglike_multinomial` was specified, but no time variable. Use `time_var = :t`...")
+    end
+
     push!(data.names, name)
     push!(data.values, value)
     push!(data.units, units)
     push!(data.labels, labels)
     push!(data.temperatures, temperature)
     push!(data.temperature_units, temperature_unit)
-    push!(data.dimensionality_types, dimenstionality_type)
+    push!(data.error_functions, error_function)
+    push!(data.grouping_vars, grouping_vars)
+    push!(data.response_vars, response_vars)
+    push!(data.time_vars, time_var)
     push!(data.bibkeys, bibkey)
+    push!(data.zerovariate, value isa Number)
     push!(data.comments, comment)
 
     return nothing
@@ -82,7 +121,7 @@ function getindex(data::AbstractDataset, name::String)
     return data.values[idx]
 end
 
-function setindex!(data::AbstractDataset, value::Union{Number,Matrix}, name::String)::Nothing
+function setindex!(data::AbstractDataset, value::Union{Number,Matrix,DataFrame}, name::String)::Nothing
     idx = findfirst(x -> x==name, data.names)
     data.values[idx] = value
     return nothing
@@ -97,4 +136,75 @@ function getinfo(data::AbstractDataset, name::String)
 
     ))
 
+end
+
+
+
+function _joinvars(grouping_vars::AbstractVector, time_vars::Nothing)
+    return grouping_vars
+end
+
+function _joinvars(grouping_vars::AbstractVector, time_vars::Vector{Symbol})
+    return vcat(grouping_vars, time_vars)
+end
+
+"""
+Compute target(s). 
+
+## args
+
+- `data::Dataset`: observations
+- `sim::Dataset`: simulations
+
+## kwargs
+
+- `combine_targets::Bool = true`: whether to return the sum of targets or the individual values
+
+"""
+function target(data::Dataset, sim::Dataset; combine_targets::Bool = true)#::Function
+
+    loss = []
+
+    for (i,name) in enumerate(data.names)
+
+        errfun = data.error_functions[i]
+        grouping_vars = data.grouping_vars[i]
+        response_vars = data.response_vars[i]
+        time_var = data.time_vars[i]
+
+        # if the entry is some kind of DataFrame, we could have an arbitrary number of response variables
+        if data[name] isa AbstractDataFrame
+
+            for (j,var) in enumerate(response_vars) 
+
+                # TODO: can we re-write this so that we only join once per entry?
+                #   maybe write a single target_closured for this entry that joins + applies errfuns
+                # TODO: allow for different error models in the same entry. number of error models should match number of response variables.
+                joined_df = leftjoin(
+                    data[name], 
+                    sim[name], 
+                    on = _joinvars(grouping_vars, time_var), 
+                    makeunique = true, 
+                    renamecols = "_obs" => "_sim"
+                    )
+
+                name_obs = join([string(var), "_obs"])
+                name_sim = join([string(var), "_sim"])
+
+                push!(loss, errfun(joined_df[:,name_sim], joined_df[:,name_obs]))
+            end
+
+        elseif data[name] isa Number
+            push!(loss, errfun(sim[name], data[name]))
+        else 
+            error("Automatized target definition for non-DataFrames currently not implemented.")
+        end
+    end
+
+    if combine_targets
+        return sum(loss)
+    else
+        return loss
+    end
+       
 end
