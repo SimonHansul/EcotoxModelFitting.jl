@@ -30,7 +30,6 @@ begin
 end
 
 
-
 import EcotoxModelFitting: sumofsquares
 
 @testset "Computing a simple target function" begin    
@@ -52,8 +51,9 @@ end
 using Optimization
 using OptimizationOptimJL
 
+debkiss = SimplifiedEnergyBudget() |> instantiate
 
-defaultparams = deepcopy(EcotoxSystems.defaultparams)
+defaultparams = debkiss.parameters
 
 defaultparams.glb.t_max = maximum(data["tWw"].t_day) + 5
 defaultparams.glb.dX_in = 1e10
@@ -84,16 +84,16 @@ fitted_param_idxs = findall(in(keys(fitted_params)), ComponentArrays.labels(defa
 
 ComponentArrays.labels(defaultparams)[fitted_param_idxs]
 
-psim = deepcopy(defaultparams)
-
-psim[fitted_param_idxs]
+psim = debkiss.parameters
 
 function simulator(p; kwargs...)
 
-    psim[fitted_param_idxs] .= p
+    psim = debkiss.parameters
 
+    psim[fitted_param_idxs] .= p
     psim.spc.dI_max_emb = psim.spc.dI_max
-    sim = EcotoxSystems.ODE_simulator(psim)
+
+    sim = simulate(debkiss)
 
     # convert simulation time to experimental time
     sim[!,:t_day] = sim.t .- 2 #rand(Uniform(2, 3))
@@ -114,12 +114,20 @@ function objective(p)
 end
 
 
-
 optfun(u,p) = objective(u)
 p0 = values(fitted_params) |> collect
 
 prob = OptimizationProblem(optfun, p0)
 sol = solve(prob, OptimizationOptimJL.NelderMead())
+
+debkiss.parameters[fitted_param_idxs]
+
+sim_fit = simulate(debkiss)
+
+plt = plot_data()
+@df sim_fit plot!(:t, :S, lw = 1.5, color = 1)
+
+
 
 @testset "Fitting to growth data only" begin
     
