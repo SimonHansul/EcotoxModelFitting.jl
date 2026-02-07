@@ -49,7 +49,7 @@ end
 
 
 using Optimization
-using OptimizationOptimJL
+using OptimizationOptimJL, OptimizationEvolutionary
 
 debkiss = SimplifiedEnergyBudget() |> instantiate
 
