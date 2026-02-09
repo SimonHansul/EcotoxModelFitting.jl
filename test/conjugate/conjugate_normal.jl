@@ -29,7 +29,7 @@ using EcotoxModelFitting
 
     # Inferring the posterior with ABC-PMC#
 
-    defaultparams = EcotoxModelFitting.ComponentVector(theta = 1.)
+    completeparams = EcotoxModelFitting.ComponentVector(theta = 1.)
     prior = Prior("theta" => truncated(Normal(mu_prior, sigma_prior), -Inf, Inf))
 
     function simulate_data(p; n = n)
@@ -53,7 +53,7 @@ using EcotoxModelFitting
         simulator = simulate_data, 
         response_vars = [[:y]], 
         time_resolved = [false],
-        defaultparams = defaultparams,
+        completeparams = completeparams,
         time_var = :t,
         plot_data = plot_data,
         loss_functions = EcotoxModelFitting.loss_euclidean

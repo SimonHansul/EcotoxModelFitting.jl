@@ -14,12 +14,12 @@ includet("debtest_utils.jl")
             return plt
         end
 
-        defaultparams = deepcopy(EcotoxSystems.defaultparams)
+        completeparams = deepcopy(EcotoxSystems.completeparams)
 
-        defaultparams.glb.t_max = maximum(data[:growth].t_day) + 5
-        defaultparams.glb.dX_in = 1e10
+        completeparams.glb.t_max = maximum(data[:growth].t_day) + 5
+        completeparams.glb.dX_in = 1e10
 
-        defaultparams.spc.X_emb_int = 0.01e-3
+        completeparams.spc.X_emb_int = 0.01e-3
 
         function early_reject(p; kwargs...)
             S_max = EcotoxSystems.calc_S_max(p.spc)
@@ -64,9 +64,9 @@ includet("debtest_utils.jl")
         # with the values of kappa, dI_max and eta_IA fixed, we can calculate an estimate of k_M
         prior_k_M = calc_prior_k_M(
             S_max_emp,
-            defaultparams.spc.kappa,
+            completeparams.spc.kappa,
             mode(prior_dI_max), 
-            defaultparams.spc.eta_IA
+            completeparams.spc.eta_IA
         )
 
         # we thus have specific priors for dI_max and k_M, 
@@ -83,7 +83,7 @@ includet("debtest_utils.jl")
     begin # problem definition and prior check
         global f = ModelFit(
             prior = prior,
-            defaultparams = defaultparams, 
+            completeparams = completeparams, 
             simulator = simulator,
             data = data, 
             response_vars = [[:S]], 
@@ -181,7 +181,7 @@ prior
    begin # problem definition and prior check
         global f = ModelFit(
             prior = prior,
-            defaultparams = EcotoxSystems.defaultparams, 
+            completeparams = EcotoxSystems.completeparams, 
             simulator = simulator,
             data = data, 
             response_vars = [[:S]], 

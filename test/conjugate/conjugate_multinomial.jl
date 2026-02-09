@@ -33,7 +33,7 @@ import EcotoxModelFitting: ComponentArrays
     sigma_prior = 0.3
     prior = Prior("p" => truncated(Normal(mu_prior, sigma_prior), 0.01, 0.999))
 
-    defaultparams = EcotoxModelFitting.ComponentVector(p = 0.6)
+    completeparams = EcotoxModelFitting.ComponentVector(p = 0.6)
 
     function simulate_data(p; N = N, T = T)
 
@@ -73,7 +73,7 @@ import EcotoxModelFitting: ComponentArrays
         simulator = simulate_data,
         response_vars = [[:deaths]],
         time_resolved = [true],
-        defaultparams = defaultparams,
+        completeparams = completeparams,
         time_var = :time,
         plot_data = plot_data,
         loss_functions = EcotoxModelFitting.loss_euclidean
@@ -127,7 +127,7 @@ import EcotoxModelFitting: ComponentVector
 #    end
 #
 #    # Wrap parameters in ComponentVector
-#    defaultparams = ComponentVector(p1 = 1/3, p2 = 1/3, p3 = 1/3)
+#    completeparams = ComponentVector(p1 = 1/3, p2 = 1/3, p3 = 1/3)
 #
 #    # Define prior as independent truncated Normals with support in [0, 1]
 #    prior = Prior(
@@ -153,7 +153,7 @@ import EcotoxModelFitting: ComponentVector
 #        simulator = simulate_data,
 #        response_vars = [[:counts]],
 #        time_resolved = [false],
-#        defaultparams = defaultparams,
+#        completeparams = completeparams,
 #        plot_data = plot_data,
 #        loss_functions = loss_fun,
 #        time_var = :cat,

@@ -2,7 +2,7 @@
 mutable struct ModelFit
     
     prior::Prior
-    defaultparams#::ComponentArray
+    completeparams#::ComponentArray
     psim#::ComponentArray
     simulator::Function
     loss::Function
@@ -23,7 +23,7 @@ mutable struct ModelFit
     """
         ModelFit(;
                 prior::Prior, 
-                defaultparams::ComponentArray,
+                completeparams::ComponentArray,
                 simulator::Function, 
                 data::Any, 
                 response_vars::Vector{Vector{Symbol}},
@@ -41,8 +41,8 @@ mutable struct ModelFit
     kwargs:
 
     - `prior::Prior`: Definition of the priors
-    - `defaultparams::ComponentVector`: The full set of parameters needed to run the model. 
-    - `simulator::Function`: Function that takes a `ComponentVector` of parameter values as input  and returns a model prediction. For parameters which are not given in as arguments to `simulator`, the `defaultparams` should be used.
+    - `completeparams::ComponentVector`: The full set of parameters needed to run the model. 
+    - `simulator::Function`: Function that takes a `ComponentVector` of parameter values as input  and returns a model prediction. For parameters which are not given in as arguments to `simulator`, the `completeparams` should be used.
     - `data::AbstractDict`: The data to fit the model to. `data` is assumed to be a dictionary, where each entry is a separate table, referred to as data keys. Data keys could for example be a table with growth data and one with survival data, etc.
     - `response_vars::Vector{Vector{Symbol}}`: Lists response variables for each data key.
     - `time_resolved::Vector{Bool}`: Indicates for each data key whether the data is time-resolved. 
@@ -57,7 +57,7 @@ mutable struct ModelFit
     """
     function ModelFit(;
         prior::Prior, 
-        defaultparams::ComponentArray,
+        completeparams::ComponentArray,
         simulator::Function, 
         data::AbstractDict, 
         response_vars::Vector{Vector{Symbol}},
@@ -79,8 +79,8 @@ mutable struct ModelFit
         $(f.prior.labels)
         "
 
-        f.defaultparams = deepcopy(defaultparams)
-        f.psim = [deepcopy(f.defaultparams) for _ in 1:Threads.nthreads()]
+        f.completeparams = deepcopy(completeparams)
+        f.psim = [deepcopy(f.completeparams) for _ in 1:Threads.nthreads()]
         f.time_var = time_var
         f.response_vars = response_vars
 
@@ -109,7 +109,7 @@ mutable struct ModelFit
 
 
         f.time_resolved = time_resolved
-        f.simulator = generate_fitting_simulator(defaultparams, prior, simulator)
+        f.simulator = generate_fitting_simulator(completeparams, prior, simulator)
         
         assign_loss_functions!(f, loss_functions)
         f.combine_losses = combine_losses
@@ -169,7 +169,7 @@ function assign_loss_functions!(f::ModelFit, loss_functions::F) where F <: Funct
 end
 
 """
-    generate_fitting_simulator(defaultparams::ComponentArray, prior::Prior, simulator::Function)::Function
+    generate_fitting_simulator(completeparams::ComponentArray, prior::Prior, simulator::Function)::Function
 
 Attempt to define a generic simulator function, based on the information given to the ModelFitting object. <br> 
 This function is called internally when calling `ModelFit`, but can be overwritten with a custom definition if needed. <br>
@@ -178,16 +178,16 @@ I am sure there are use-cases where this will fail. For the cases tested so far 
 The generated "fitting simulator" 
     - Is a wrapper around the provided `simulator` argument
     - Expects the parameter values as vector of floats
-    - Assures that parameters are assigned correctly to a copy of the defaultparams
-    - Pre-allocates copies of the defaultparams with account for multithreading
+    - Assures that parameters are assigned correctly to a copy of the completeparams
+    - Pre-allocates copies of the completeparams with account for multithreading
     - Deals with priors provided as `Hyperdist` (currently not in a full hierarchical approach, TBC)
     - Defines a second method for the fitting_simulator which dispatches to the original `simulator` function (useful in conjunction with the `ModelFit` struct)
 
 """
-function generate_fitting_simulator(defaultparams, prior::Prior, simulator::Function)::Function
+function generate_fitting_simulator(completeparams, prior::Prior, simulator::Function)::Function
 
     # when using mult-threading, we create a copy of the parameter object for each thread
-    pfit = [deepcopy(defaultparams) for _ in 1:Threads.nthreads()]
+    pfit = [deepcopy(completeparams) for _ in 1:Threads.nthreads()]
 
     # matching parameter labels to indices
     pfit_labels = ComponentArrays.labels(pfit[1])

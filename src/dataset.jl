@@ -127,17 +127,19 @@ function setindex!(data::AbstractDataset, value::Union{Number,Matrix,DataFrame},
     return nothing
 end
 
+"""
+Retrieve all relevant info related to a dataset entry. 
+"""
 function getinfo(data::AbstractDataset, name::String)
     idx = findfirst(x -> x==name, data.names)
 
     return OrderedDict(zip(
-        [:name, :value, :units, :labels, :temperature, :temperature_units, :dimensionality_type, :bibkey, :comment],
-        [data.names[idx], data.values[idx], data.units[idx], data.labels[idx], data.temperatures[idx], data.temperature_units[idx], data.dimensionality_types[idx], data.bibkeys[idx], data.comments[idx]],
+        [:name, :value, :units, :labels, :grouping_vars, :response_vars, :temperature, :temperature_units, :bibkey, :comment],
+        [data.names[idx], data.values[idx], data.units[idx], data.labels[idx], data.grouping_vars[idx], data.response_vars[idx], data.temperatures[idx], data.temperature_units[idx], data.bibkeys[idx], data.comments[idx]],
 
     ))
 
 end
-
 
 
 function _joinvars(grouping_vars::AbstractVector, time_vars::Nothing)
@@ -149,7 +151,7 @@ function _joinvars(grouping_vars::AbstractVector, time_vars::Vector{Symbol})
 end
 
 """
-Compute target(s). 
+Compute target(s), i.e error functions for all response variables in a `Dataset`. 
 
 ## args
 
@@ -193,7 +195,6 @@ function target(data::Dataset, sim::Dataset; combine_targets::Bool = true)#::Fun
 
                 push!(loss, errfun(joined_df[:,name_sim], joined_df[:,name_obs]))
             end
-
         elseif data[name] isa Number
             push!(loss, errfun(sim[name], data[name]))
         else 

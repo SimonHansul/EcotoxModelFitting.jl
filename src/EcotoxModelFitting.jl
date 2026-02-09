@@ -6,9 +6,12 @@ using DataStructures
 using StatsBase
 using ComponentArrays
 using LaTeXStrings, Latexify
+using Unitful
 using JLD2
 using Downloads
 using Printf
+using Optimization
+using OptimizationOptimJL, OptimizationEvolutionary
 
 #using Setfield
 using Base.Threads
@@ -23,21 +26,42 @@ export C2K
 include("dataset.jl")
 export Dataset, add!, getinfo, get_target
 
-include("addmypet_data_retrieval.jl")
-export retrieve_amp_data, parse_mydata
+include("parameters.jl")
+return Parameters
 
-export ModelFit, run_PMC!, update_data_weights!, generate_fitting_simulator, generate_loss_function, rand, posterior_sample, posterior_sample!, bestfit, generate_posterior_summary, posterior_predictions, assign_value_by_label!, assign_values_from_file!
+include("fitting_problem.jl")
+export FittingProblem
+
+include("optimization_backend.jl")
+export AbstractFittingBackend, OptimizationBackend
+
+include("io.jl")
+export read_file
+
+
+# TODO: these are things that might be moved to a separate PMC extension
 
 # reserved column names for the posterior -> cannot be used as parameter names
-const RESERVED_COLNAMES = ["loss", "weight", "model", "chain"]
+const RESERVED_COLNAMES = ["loss", "weight", "model", "chain"]#
 
 include("priors.jl")
 export Prior, deftruncnorm
 
+include("modelfit.jl")
+
+include("populationmontecarlo.jl")
+export run_PMC!
+
+include("assign.jl")
+export assign_values_from_file!
+
+include("diagnostics.jl")
+export generate_posterior_summary, bestfit, quantitative_evaluation
+
+
 include("prior_heuristics.jl")
 export calc_prior_dI_max, calc_prior_k_M
 
-include("modelfit.jl")
 
 include("prior_check.jl")
 export prior_predictive_check
@@ -50,18 +74,12 @@ include("loss_generation.jl")
 include("posterior_samples.jl")
 export posterior_sample, posterior_sample!
 
-include("diagnostics.jl")
-export generate_posterior_summary, bestfit, quantitative_evaluation
 
-include("populationmontecarlo.jl")
-export run_PMC!
+export ModelFit, run_PMC!, update_data_weights!, generate_fitting_simulator, generate_loss_function, rand, posterior_sample, posterior_sample!, bestfit, generate_posterior_summary, posterior_predictions, assign_value_by_label!, assign_values_from_file!
 
-include("localoptim.jl")
 
-include("assign.jl")
-export assign_values_from_file!
+include("addmypet_data_retrieval.jl")
+export retrieve_amp_data, parse_mydata
 
-include("io.jl")
-export read_file
 
 end # module EcotoxModelFitting

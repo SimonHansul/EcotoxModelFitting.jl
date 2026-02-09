@@ -1,7 +1,7 @@
 name = "EcotoxModelFitting"
 uuid = "11baf4a3-28f5-4d66-8f46-d015c3f5447c"
-authors = ["SimonHansul <simonhansul@gmail.com>"]
 version = "0.2.0"
+authors = ["SimonHansul <simonhansul@gmail.com>"]
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -15,9 +15,13 @@ DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 Latexify = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
+Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
+OptimizationEvolutionary = "cb963754-43f6-435e-8d4b-99009ff27753"
+OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
 CSV = "0.10.15"
@@ -31,6 +35,10 @@ DrWatson = "2.18.0"
 JLD2 = "0.5.13"
 LaTeXStrings = "1.4.0"
 Latexify = "0.16.7"
+Optimization = "4.3.0"
+OptimizationEvolutionary = "0.4.1"
+OptimizationOptimJL = "0.4.3"
 Printf = "1.11.0"
 ProgressMeter = "1.10.2"
 StatsBase = "0.34.4"
+Unitful = "1.24.0"

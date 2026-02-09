@@ -43,29 +43,29 @@ includet("debtest_utils.jl")
         return plt
     end
 
-    defaultparams = EcotoxSystems.ComponentVector(
-        glb = EcotoxSystems.defaultparams.glb, 
+    completeparams = EcotoxSystems.ComponentVector(
+        glb = EcotoxSystems.completeparams.glb, 
         spc = EcotoxSystems.ComponentVector(
-            EcotoxSystems.defaultparams.spc; 
+            EcotoxSystems.completeparams.spc; 
         )
     )
 
-    defaultparams.glb.t_max = maximum(data[:growth].t_day) + 5
-    defaultparams.glb.dX_in = 1e10
+    completeparams.glb.t_max = maximum(data[:growth].t_day) + 5
+    completeparams.glb.dX_in = 1e10
 
-    defaultparams.spc.X_emb_int = 19.42
-    defaultparams.spc.eta_IA = 0.3333333333333333 
-    defaultparams.spc.eta_AS = 0.5669099069065335
-    defaultparams.spc.eta_AR = 0.95 
-    defaultparams.spc.dI_max = 22.951969283399958
-    defaultparams.spc.dI_max_emb = 22.951969283399958
-    defaultparams.spc.K_X = 500.0
-    defaultparams.spc.kappa = 0.4970200384088672
-    defaultparams.spc.eta_SA = 0.9
-    defaultparams.spc.k_M = 0.41585070193255785
-    defaultparams.spc.H_p = 184.914533018897
+    completeparams.spc.X_emb_int = 19.42
+    completeparams.spc.eta_IA = 0.3333333333333333 
+    completeparams.spc.eta_AS = 0.5669099069065335
+    completeparams.spc.eta_AR = 0.95 
+    completeparams.spc.dI_max = 22.951969283399958
+    completeparams.spc.dI_max_emb = 22.951969283399958
+    completeparams.spc.K_X = 500.0
+    completeparams.spc.kappa = 0.4970200384088672
+    completeparams.spc.eta_SA = 0.9
+    completeparams.spc.k_M = 0.41585070193255785
+    completeparams.spc.H_p = 184.914533018897
 
-    defaultparams.spc.KD .= 0.
+    completeparams.spc.KD .= 0.
 
     function early_reject(p; kwargs...)
         
@@ -116,7 +116,7 @@ includet("debtest_utils.jl")
 
     global f = ModelFit(
         prior = prior,
-        defaultparams = defaultparams, 
+        completeparams = completeparams, 
         simulator = simulator,
         data = data, 
         response_vars = [[:S], [:cum_repro]], 
