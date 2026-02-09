@@ -42,10 +42,10 @@ Returns indices of parameters to be fitted.
 """
 function get_fitted_param_idxs(
     completeparams::ComponentVector,
-    pars::Parameters, 
+    parameters::Parameters, 
     )
 
-    free_labels = pars.cvec_labels[pars.free .== true] # get labels of just the free parameters
+    free_labels = parameters.cvec_labels[parameters.free .== true] # get labels of just the free parameters
     complete_labels = ComponentArrays.labels(completeparams) # get all labels of the complete parameter set
 
     # --- input validation
@@ -58,7 +58,7 @@ function get_fitted_param_idxs(
 
     # ---
 
-    return [x in free_labels for x in complete_labels] |> findall
+    return [ComponentArrays.label2index(completeparams, l) for l in free_labels] |> x-> vcat(x...)
 end
 
 # TODO: 

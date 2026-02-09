@@ -3,6 +3,7 @@ using Distributions
 using DataFrames, DataFramesMeta
 using ProgressMeter
 using DataStructures
+using Parameters
 using StatsBase
 using ComponentArrays
 using LaTeXStrings, Latexify
@@ -33,7 +34,7 @@ include("fitting_problem.jl")
 export FittingProblem
 
 include("optimization_backend.jl")
-export AbstractFittingBackend, OptimizationBackend
+export AbstractFittingResult, OptimizationResult
 
 include("io.jl")
 export read_file
