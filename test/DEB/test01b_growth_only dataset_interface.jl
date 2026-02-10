@@ -104,3 +104,8 @@ end
     EcotoxModelFitting.parameter_table(prob, res) |> display
     @test true # just needs to run without error
 end
+
+
+using OptimizationEvolutionary
+
+
