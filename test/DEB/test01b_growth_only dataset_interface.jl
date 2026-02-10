@@ -41,6 +41,7 @@ end
     @test EcotoxModelFitting.target(data, sim, combine_targets = false) |> x-> length(x) == length(data.names)
 end
 
+
 begin # setting up the model to fit
     using Unitful    
     import EcotoxModelFitting: Parameters

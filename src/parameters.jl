@@ -61,6 +61,11 @@ function get_fitted_param_idxs(
     return [ComponentArrays.label2index(completeparams, l) for l in free_labels] |> x-> vcat(x...)
 end
 
+function to_cvec(pars::Parameters)::ComponentVector
+    nt = NamedTuple{Tuple(Symbol.(pars.cvec_labels))}(pars.values)
+    return ComponentVector(nt)
+end
+
 # TODO: 
 # function report(pars::Parameters)
 # --> generate a nice markdown table 

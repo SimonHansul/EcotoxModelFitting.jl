@@ -49,6 +49,10 @@ The current version of EcotxoModelfitting is <1.0.0.
 ### v0.2.0
 
 - Introduced `Dataset` interface
-    - defined a `get_target` function 
+    - defined a `target` function to compute the target from `data` and `sim`
     - implemented a test for use of Dataset interface + local optim for the minimal DEB case (fit to growth only)
 - `ModelFit`interface is still available for the time being, but will be depracated and removed
+
+### v0.2.1
+
+- added function `to_cvec` to convert `Parameters` object to `ComponentVector`
