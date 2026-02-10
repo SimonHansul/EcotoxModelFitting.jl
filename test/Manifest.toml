@@ -2,7 +2,7 @@
 
 julia_version = "1.12.1"
 manifest_format = "2.0"
-project_hash = "a973b0cd31c521f55624a77c8f8ad10b8804bc1f"
+project_hash = "7ac446791efe2c8c71a2d22b3456481693a00307"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "f7304359109c768cf32dc5fa2d371565bb63b68a"
@@ -575,7 +575,7 @@ uuid = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 version = "2.19.1"
 
 [[deps.EcotoxModelFitting]]
-deps = ["CSV", "ComponentArrays", "DataFrames", "DataFramesMeta", "DataStructures", "Distributions", "Downloads", "DrWatson", "JLD2", "LaTeXStrings", "Latexify", "Optimization", "OptimizationEvolutionary", "OptimizationOptimJL", "Parameters", "Printf", "ProgressMeter", "StatsBase", "Unitful"]
+deps = ["CSV", "ComponentArrays", "DataFrames", "DataFramesMeta", "DataStructures", "Distributions", "Downloads", "DrWatson", "JLD2", "LaTeXStrings", "Latexify", "Markdown", "Optimization", "OptimizationEvolutionary", "OptimizationOptimJL", "Parameters", "Printf", "ProgressMeter", "StatsBase", "Unitful"]
 path = ".."
 uuid = "11baf4a3-28f5-4d66-8f46-d015c3f5447c"
 version = "0.2.0"

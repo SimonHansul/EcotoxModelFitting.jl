@@ -6,6 +6,7 @@ using DataStructures
 using Parameters
 using StatsBase
 using ComponentArrays
+using Markdown
 using LaTeXStrings, Latexify
 using Unitful
 using JLD2

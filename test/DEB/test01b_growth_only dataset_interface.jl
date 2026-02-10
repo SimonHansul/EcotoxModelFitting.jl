@@ -41,11 +41,12 @@ end
     @test EcotoxModelFitting.target(data, sim, combine_targets = false) |> x-> length(x) == length(data.names)
 end
 
+using LaTeXStrings
+using Unitful  
+import EcotoxModelFitting: Parameters
+using EcotoxModelFitting.ComponentArrays
 
 begin # setting up the model to fit
-    using Unitful    
-    import EcotoxModelFitting: Parameters
-    using EcotoxModelFitting.ComponentArrays
     
     debkiss = SimplifiedEnergyBudget() |> instantiate
     debkiss.parameters.glb.t_max = 25.
@@ -53,7 +54,7 @@ begin # setting up the model to fit
     parameters = Parameters(
         "spc.dI_max" => (value = 7.5, free = 1, label = "{dI}ₘ", description = "max. specific ingestion rate", unit = "mg/(mg^(2/3) d)"), 
         "spc.k_M"    => (value = 0.2, free = 1, label = "k_M", description = "somatic maint. rate constant", unit = "1/d"), 
-        "spc.eta_AS" => (value = 0.5, free = 1, label = "η_AS", description = "growth efficiency"), 
+        "spc.eta_AS" => (value = 0.5, free = 1, label = "eta_AS", description = "growth efficiency"), 
         "spc.kappa"  => (value = 0.8, free = 1, label = "κ", description = "somatic invest. ratio")
     )
 
@@ -99,3 +100,7 @@ begin # setting up the model to fit
 end
 
 
+@testset "Parameter table" begin
+    EcotoxModelFitting.parameter_table(prob, res) |> display
+    @test true # just needs to run without error
+end

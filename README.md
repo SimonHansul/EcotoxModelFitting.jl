@@ -56,3 +56,7 @@ The current version of EcotxoModelfitting is <1.0.0.
 ### v0.2.1
 
 - added function `to_cvec` to convert `Parameters` object to `ComponentVector`
+
+### v0.2.2
+
+- added function `parameter_table` to print parameters as markdown table
