@@ -174,7 +174,6 @@ end
 #=
 ## Using the symmetric bounded loss function
 =#
-prior
 
 @testset "Fitting to growth data using symmbound loss" begin
 

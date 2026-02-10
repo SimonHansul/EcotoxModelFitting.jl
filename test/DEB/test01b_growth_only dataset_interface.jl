@@ -46,7 +46,7 @@ begin # setting up the model to fit
     import EcotoxModelFitting: Parameters
     using EcotoxModelFitting.ComponentArrays
     
-    const debkiss = SimplifiedEnergyBudget() |> instantiate
+    debkiss = SimplifiedEnergyBudget() |> instantiate
     debkiss.parameters.glb.t_max = 25.
 
     parameters = Parameters(
@@ -58,14 +58,11 @@ begin # setting up the model to fit
 
     #=
     Here we set up a simulator function. 
-    Note that with the parameters organzied in `ComponentArrays`, you do not need to worry about assigning values to `p`, 
-    or differentiate between free and fixed parameters. 
-    These things are handled by the fitting backend. 
-
-    What is important however is that the returned simulated data 
-    has the same structure as the observed data. 
-    For this reason, we first create a copy of `data`. 
+    Note that with the parameters organzied in `ComponentArrays`, you do not need to worry about assigning values to `p`, or differentiate between free and fixed parameters. These things are handled by the fitting backend. 
+    What is important however is that the returned simulated data has the same structure as the observed data. For this reason, we first create a copy of `data`. 
     =#
+
+    sim_ds = deepcopy(data)
 
     function simulator(p::ComponentVector)::Dataset
 
@@ -99,59 +96,5 @@ begin # setting up the model to fit
     plot_data()
     @df sim_fit["tWw"] plot!(:t_day, :S)
 end
-
-
-@code_warntype EcotoxModelFitting.solve(prob)
-
-
-p0 = values(prob.parameters.values[prob.parameters.free]) |> collect
-optim_prob = OptimizationProblem((u,p)->objective(u), p0)
-alg = OptimizationOptimJL.NelderMead()
-
-@time sol1 = Optimization.solve(optim_prob, alg)
-@time sol2 = Optimization.solve(optim_prob, alg)
-
-# FIXME: optimizer returns initial conditions?
-#   - objectve always returns the same value...
-#   - look at the parameters in simulator()
-#   - these are  always different
-#   - but the order might not be correct
-using Optimization, OptimizationOptimJL
-using EcotoxSystems.Parameters
-alg = NelderMead() 
-@unpack dataset, parameters, completeparams, fitted_param_idxs = prob
-@unpack cvec_labels = parameters
-
-# define an objective function around the simulator that works with Optimization.jl
-psim = deepcopy(completeparams)
-
-function objective(p; return_sim = false)
-
-
-    psim[fitted_param_idxs] .= p
-    sim = simulator(psim)     
-
-    if return_sim
-        return sim
-    end
-
-    return EcotoxModelFitting.target(prob.dataset, sim)
-end
-
-optfun(u,p) = objective(u)
-
-p0 = values(parameters.values[parameters.free]) |> collect
-optim_prob = OptimizationProblem(optfun, p0)
-result = OptimizationResult(alg, objective)
-result.objective = objective
-
-using BenchmarkTools
-
-@benchmark result.sol = Optimization.solve(optim_prob, alg)
-
-# FIXME: code is being re-compiled on every call of solve()
-
-p = debkiss.parameters
-@time simulator(p);
 
 
