@@ -23,8 +23,6 @@ function parameter_table(prob::FittingProblem, res::OptimizationResult; backend 
     idxs = findall(prob.parameters.free) # indices of free parameters in Parameters object
     pars = prob.parameters
 
-    @show idxs
-
     header = "| Label | Value | Free | Unit | Description |\n|-------|----|----------|------|-------------|"
     rows = String[]
 

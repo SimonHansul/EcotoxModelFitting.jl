@@ -7,6 +7,7 @@ Base.@kwdef mutable struct Dataset <: AbstractDataset
     names::Vector{AbstractString} = AbstractString[]
     values::Vector{Union{Number,Matrix,DataFrame}} = Union{Number,Matrix,DataFrame}[]
     error_functions::Vector{Function} = Function[]
+    log_likelihood_functions::Vector{Function} = Function[]
     targets_closured::Tuple = ()
     units::Vector{Vector{String}} = Vector{String}[]
     labels::Vector{Vector{String}} = Vector{String}[]
@@ -32,6 +33,7 @@ function add!(
     temperature::Number = NaN,
     temperature_unit::AbstractString = "K",
     error_function = sumofsquares,
+    log_likelihood_function = log_normlike,
     grouping_vars = nothing, 
     response_vars = nothing,
     time_var = nothing,
@@ -102,6 +104,7 @@ function add!(
     push!(data.temperatures, temperature)
     push!(data.temperature_units, temperature_unit)
     push!(data.error_functions, error_function)
+    push!(data.log_likelihood_functions, log_likelihood_function)
     push!(data.grouping_vars, grouping_vars)
     push!(data.response_vars, response_vars)
     push!(data.time_vars, time_var)
@@ -206,6 +209,56 @@ function target(data::Dataset, sim::Dataset; combine_targets::Bool = true)#::Fun
         return sum(loss)
     else
         return loss
+    end
+       
+end
+
+
+function log_likelihood(data::Dataset, sim::Dataset, sigmas::Vector{Vector{Real}}; combine_likelihoods::Bool = true)#::Function
+
+    loglike = []
+
+    for (i,name) in enumerate(data.names)
+
+        loglikefun = data.log_likelihood_functions[i]
+        grouping_vars = data.grouping_vars[i]
+        response_vars = data.response_vars[i]
+        time_var = data.time_vars[i]
+
+        # if the entry is some kind of DataFrame, we could have an arbitrary number of response variables
+        if data[name] isa AbstractDataFrame
+
+            for (j,var) in enumerate(response_vars) 
+
+                # TODO: can we re-write this so that we only join once per entry?
+                #   maybe write a single target_closured for this entry that joins + applies errfuns
+                # TODO: allow for different error models in the same entry. number of error models should match number of response variables.
+                joined_df = leftjoin(
+                    data[name], 
+                    sim[name], 
+                    on = _joinvars(grouping_vars, time_var), 
+                    makeunique = true, 
+                    renamecols = "_obs" => "_sim"
+                    )
+
+                name_obs = join([string(var), "_obs"])
+                name_sim = join([string(var), "_sim"])
+
+                σ = sigmas[i][j] # sigma of the jth response varaible in the ith data entry
+
+                push!(loglike, loglikefun(joined_df[:,name_sim], joined_df[:,name_obs], σ))
+            end
+        elseif data[name] isa Number
+            push!(loglike, loglikefun(sim[name], data[name]))
+        else 
+            error("Automatized target definition for non-DataFrames currently not implemented.")
+        end
+    end
+
+    if combine_likelihoods
+        return sum(loglike)
+    else
+        return loglike
     end
        
 end

@@ -24,20 +24,20 @@ struct ObjectiveFunction
     fitted_param_idxs::Vector{Int64}
 end
 
-function (obj::ObjectiveFunction)(p::Vector{Float64})::Float64
-    psim = deepcopy(obj.completeparams)
-    psim[obj.fitted_param_idxs] .= p
-    sim = obj.simulator(psim)
-    
-    return target(obj.dataset, sim)
-end
+#function (obj::ObjectiveFunction)(p::Vector{Float64})::Float64
+#    psim = deepcopy(obj.completeparams)
+#    psim[obj.fitted_param_idxs] .= p
+#    sim = obj.simulator(psim)
+#    
+#    return target(obj.dataset, sim)
+#end
 
 
 function (obj::ObjectiveFunction)(p::Vector{Float64}; return_sim::Bool=false)::Union{Float64,Dataset}
 
-    psim = deepcopy(obj.completeparams)
-    psim[obj.fitted_param_idxs] .= p
-    sim = obj.simulator(psim)
+    
+    obj.completeparams[obj.fitted_param_idxs] .= p
+    sim = obj.simulator(obj.completeparams)
     t =  target(obj.dataset, sim)
 
     if return_sim
@@ -53,7 +53,7 @@ function solve(prob::FittingProblem, alg::Union{NelderMead} = OptimizationOptimJ
     @unpack cvec_labels = parameters
 
     # define an objective function around the simulator that works with Optimization.jl
-    objective = ObjectiveFunction(dataset, simulator, completeparams, fitted_param_idxs)
+    objective = ObjectiveFunction(dataset, simulator, deepcopy(completeparams), fitted_param_idxs)
     optfun(u,p) = objective(u)
     
     p0 = values(parameters.values[parameters.free]) |> collect

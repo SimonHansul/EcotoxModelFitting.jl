@@ -66,16 +66,16 @@ export assign_values_from_file!
 include("diagnostics.jl")
 export generate_posterior_summary, bestfit, quantitative_evaluation
 
-
 include("prior_heuristics.jl")
 export calc_prior_dI_max, calc_prior_k_M
-
 
 include("prior_check.jl")
 export prior_predictive_check
 
-include("loss_functions.jl") 
+include("error_functions.jl") 
 export loss_mse_logtransform, loss_logmse, loss_euclidean, loss_euclidean_logtransform
+
+include("likelihood_functions.jl")
 
 include("loss_generation.jl") 
 

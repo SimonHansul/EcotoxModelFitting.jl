@@ -92,7 +92,7 @@ begin # local optimization; TODO: define proper test condition
         debkiss.parameters
         )
 
-    @time res = EcotoxModelFitting.solve(prob)
+    @time global res = EcotoxModelFitting.solve(prob)
     sim_fit = res.objective(res.sol.u; return_sim = true)
 
     EcotoxModelFitting.parameter_table(prob, res; sigdigits = 4) |> display
@@ -127,3 +127,35 @@ using OptimizationEvolutionary
     @test res.sol.u[1] ≈ 14.56 atol = 0.01
     @test res.sol.u[2] ≈ 0.29 atol = 0.01
 end
+
+#@testset Bayesian inference
+using Turing, Distributions
+
+# TODO: 
+#   add log_likelihoods to Dataset
+#   test just the likelihood function
+#   construct parameter priors including sigmas
+#   construct turing model
+
+
+@model function bayesian_model(data, priors, completeparams)
+
+    θ = ComponentVector{Real}(undef, keys(priors))
+
+    for k in keys(priors)
+        θ[k] ~ priors[k]
+    end
+
+    completeparams[fitted_param_idxs] .= θ[sim_param_idxs]
+    sigmas = θ[sigma_param_idxs]
+
+    sim_ds = simulator(p)
+
+    addlogprob!(loglikelihood(data, sim_ds, sigmas))
+end
+
+chain = sample(
+    bayesian_model(data, priors, completeparams), 
+    NUTS(), 
+    1_0000
+)
