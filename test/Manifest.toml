@@ -575,10 +575,10 @@ uuid = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 version = "2.19.1"
 
 [[deps.EcotoxModelFitting]]
-deps = ["CSV", "ComponentArrays", "DataFrames", "DataFramesMeta", "DataStructures", "Distributions", "Downloads", "DrWatson", "JLD2", "LaTeXStrings", "Latexify", "Markdown", "Optimization", "OptimizationEvolutionary", "OptimizationOptimJL", "Parameters", "Printf", "ProgressMeter", "StatsBase", "Unitful"]
+deps = ["CSV", "ComponentArrays", "DataFrames", "DataFramesMeta", "DataStructures", "Distributions", "Downloads", "DrWatson", "JLD2", "LaTeXStrings", "Latexify", "Markdown", "Optimization", "OptimizationEvolutionary", "OptimizationOptimJL", "Parameters", "Printf", "ProgressMeter", "Random", "StatsBase", "Unitful"]
 path = ".."
 uuid = "11baf4a3-28f5-4d66-8f46-d015c3f5447c"
-version = "0.2.0"
+version = "0.2.2"
 
 [[deps.EcotoxSystems]]
 deps = ["ComponentArrays", "DataFrames", "Distributions", "OrdinaryDiffEq", "Parameters", "PrecompileTools", "Random", "RecipesBase", "StaticArrays", "StatsBase"]

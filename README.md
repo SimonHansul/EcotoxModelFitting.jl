@@ -27,6 +27,11 @@ The current version of EcotxoModelfitting is <1.0.0.
 >v1.0.0 will include some major changes to the API which will almost certainly result in incompatabilities.
 >Code that relies on EcotoxModelFitting 0.1.x will have to be refactored in order to update to 1.0.0. 
 
+## Supported algorithms
+
+- `Optim.NelderMead`
+- `Evolutionary.CMAES`
+
 ## Changelog
 
 ### v0.1.9
@@ -60,3 +65,7 @@ The current version of EcotxoModelfitting is <1.0.0.
 ### v0.2.2
 
 - added function `parameter_table` to print parameters as markdown table
+
+### v0.2.3
+
+- added support for `Evolutionary.CMAES`

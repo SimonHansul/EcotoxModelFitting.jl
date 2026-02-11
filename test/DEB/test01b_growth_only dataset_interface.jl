@@ -46,16 +46,16 @@ using Unitful
 import EcotoxModelFitting: Parameters
 using EcotoxModelFitting.ComponentArrays
 
-begin # setting up the model to fit
+begin # local optimization; TODO: define proper test condition
     
     debkiss = SimplifiedEnergyBudget() |> instantiate
     debkiss.parameters.glb.t_max = 25.
 
     parameters = Parameters(
-        "spc.dI_max" => (value = 7.5, free = 1, label = "{dI}ₘ", description = "max. specific ingestion rate", unit = "mg/(mg^(2/3) d)"), 
-        "spc.k_M"    => (value = 0.2, free = 1, label = "k_M", description = "somatic maint. rate constant", unit = "1/d"), 
-        "spc.eta_AS" => (value = 0.5, free = 1, label = "eta_AS", description = "growth efficiency"), 
-        "spc.kappa"  => (value = 0.8, free = 1, label = "κ", description = "somatic invest. ratio")
+        "spc.dI_max" => (value = 7.50, free = 1, lower = 0, upper = 100, label = "{dI}ₘ", description = "max. specific ingestion rate", unit = "mg/(mg^(2/3) d)"), 
+        "spc.k_M"    => (value = 0.20, free = 1, lower = 0, upper = 10, label = "k_M", description = "somatic maint. rate constant", unit = "1/d"), 
+        "spc.eta_AS" => (value = 0.75, free = 0, lower = 0, upper = 1, label = "eta_AS", description = "growth efficiency"), 
+        "spc.kappa"  => (value = 0.80, free = 0, lower = 0, upper = 1, label = "κ", description = "somatic invest. ratio")
     )
 
     #=
@@ -95,17 +95,35 @@ begin # setting up the model to fit
     @time res = EcotoxModelFitting.solve(prob)
     sim_fit = res.objective(res.sol.u; return_sim = true)
 
+    EcotoxModelFitting.parameter_table(prob, res; sigdigits = 4) |> display
+    @test true # just needs to run without error
+
     plot_data()
     @df sim_fit["tWw"] plot!(:t_day, :S)
 end
 
-
-@testset "Parameter table" begin
-    EcotoxModelFitting.parameter_table(prob, res) |> display
-    @test true # just needs to run without error
-end
-
-
 using OptimizationEvolutionary
 
+@testset "Global optimization with CMAES" begin
+        
+    alg = CMAES()
 
+    prob = FittingProblem(
+        data, 
+        simulator, 
+        parameters, 
+        debkiss.parameters
+        )
+    @time res = EcotoxModelFitting.solve(prob, alg; random_seed = 20260211);
+
+    sim_fit = res.objective(res.sol.u; return_sim = true)
+    plt = plot_data()
+    @df sim_fit["tWw"] plot!(:t_day, :S)
+    display(plt)
+    EcotoxModelFitting.parameter_table(prob, res; sigdigits =10) |> display
+
+    # these values were checked manually
+
+    @test res.sol.u[1] ≈ 14.56 atol = 0.01
+    @test res.sol.u[2] ≈ 0.29 atol = 0.01
+end

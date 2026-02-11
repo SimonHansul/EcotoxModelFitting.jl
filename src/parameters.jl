@@ -3,16 +3,34 @@ abstract type AbstractParameters end
 mutable struct Parameters <: AbstractParameters
     cvec_labels::Vector{String}
     values::Vector{Float64}
+    lower::Vector{Float64}
+    upper::Vector{Float64}
     free::Vector{Bool}
     labels::Vector{AbstractString}
     units::Vector{Union{AbstractString,Unitful.Unitlike}}
     descriptions::Vector{AbstractString}
 
+    """
+    Instantiate a `Parameter` structure. 
+
+    ## Examples
+
+    ```Julia
+
+    parameters = Parameters(
+        alpha = (value = 0.1, lower = 0, upper = 1, free = 1, label = "α", unit = "-", description = "example parameter"),
+        beta = (value = 0.1, lower = 0, upper = Inf, free = 0, label = "β", unit = "-", description = "another example parameter - this one will stay fixed"),
+    )
+
+    ```
+    """
     function Parameters(args::Pair...)
         p = new()
 
         p.cvec_labels = String[]
         p.values = Float64[]
+        p.lower = Float64[]
+        p.upper = Float64[]
         p.free = Bool[]
         p.labels = AbstractString[]
         p.units = Union{AbstractString,Unitful.Unitlike}[]
@@ -25,6 +43,9 @@ mutable struct Parameters <: AbstractParameters
             push!(p.labels, v.label)
             push!(p.units, get(v, :unit, ""))
             push!(p.descriptions, v.description)
+
+            :lower in keys(v) ? push!(p.lower, v.lower) : push!(p.lower, 0)
+            :upper in keys(v) ? push!(p.upper, v.upper) : push!(p.upper, Inf)
         end
 
         return p

@@ -14,6 +14,7 @@ using Downloads
 using Printf
 using Optimization
 using OptimizationOptimJL, OptimizationEvolutionary
+using Random
 
 #using Setfield
 using Base.Threads
@@ -39,6 +40,11 @@ export AbstractFittingResult, OptimizationResult
 
 include("io.jl")
 export read_file
+
+
+# TODO: add a precompile statement
+#   - for local optim
+#   - for global optim
 
 
 # TODO: these are things that might be moved to a separate PMC extension

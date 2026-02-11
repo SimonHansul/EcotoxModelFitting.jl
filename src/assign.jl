@@ -1,9 +1,11 @@
 #assign.jl
 #functions to assign values to parameter vectors (given as ComponentArrays) from various sources
 
-using EcotoxModelFitting
-
-function assign_value_by_label!(p, label, value)::Nothing
+"""
+Assign value to `ComponentVector` based on its label, where the label can include the component hierarchy (e.g. `component.x`). 
+This might be slow and should be avoided in performance-critical code.
+"""
+function assign_value_by_label!(p::ComponentVector, label, value)::Nothing
 
     labels = ComponentArrays.labels(p)
     idx = findfirst(x -> x == label, labels)
