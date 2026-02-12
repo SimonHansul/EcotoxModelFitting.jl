@@ -97,6 +97,11 @@ function add!(
         error("For data entry $(name), `negloglike_multinomial` was specified, but no time variable. Use `time_var = :t`...")
     end
 
+    if surivival_data_likely_present(labels) && (log_likelihood_function == log_normlike)
+        @warn "Normal likelihood was supplied for data entry $name that might include survival data. Multinomial likelihood is more appropriate for survival data."
+    end
+ 
+
     push!(data.names, name)
     push!(data.values, value)
     push!(data.units, units)
@@ -114,6 +119,16 @@ function add!(
 
     return nothing
     
+end
+
+
+function survival_data_likely_present(labels::Vector{AbstractString})
+
+    c1 = sum([occursin("surviv", l) for l in labels]) > 0
+    c2 = sum([occursin("mort", l) for l in labels]) > 0
+    c3 = sum([occursin("leth", l) for l in labels]) > 0
+
+    return sum([c1, c2, c3]) > 0
 end
 
 import Base.getindex

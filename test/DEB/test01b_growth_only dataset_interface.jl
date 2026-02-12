@@ -137,6 +137,7 @@ using Turing, Distributions
 #   construct parameter priors including sigmas
 #   construct turing model
 
+data.log_likelihood_functions
 
 @model function bayesian_model(data, priors, completeparams)
 
