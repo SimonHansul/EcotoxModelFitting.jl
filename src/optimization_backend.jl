@@ -34,7 +34,6 @@ end
 
 
 function (obj::ObjectiveFunction)(p::Vector{Float64}; return_sim::Bool=false)::Union{Float64,Dataset}
-
     
     obj.completeparams[obj.fitted_param_idxs] .= p
     sim = obj.simulator(obj.completeparams)

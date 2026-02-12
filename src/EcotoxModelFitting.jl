@@ -30,7 +30,7 @@ include("dataset.jl")
 export Dataset, add!, getinfo, get_target
 
 include("parameters.jl")
-return Parameters
+export Parameters
 
 include("fitting_problem.jl")
 export FittingProblem
@@ -53,7 +53,7 @@ export read_file
 const RESERVED_COLNAMES = ["loss", "weight", "model", "chain"]#
 
 include("priors.jl")
-export Prior, deftruncnorm
+export Prior, deftruncnorm, ETMFTuringPrior, get_priors_uniform, get_priors_normal
 
 include("modelfit.jl")
 

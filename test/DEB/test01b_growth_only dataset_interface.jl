@@ -2,7 +2,8 @@
 
 include("../test_setup.jl")
 includet("debtest_utils.jl")
-    
+include("debtest_utils.jl")
+
 begin # test setup
     using CSV
     import EcotoxModelFitting: sumofsquares
@@ -66,7 +67,8 @@ begin # local optimization; TODO: define proper test condition
 
     sim_ds = deepcopy(data)
 
-    function simulator(p::ComponentVector)::Dataset
+    # note the `!`, because we are mutating `sim_ds`
+    function simulator!(p::ComponentVector)::Dataset
 
         p.spc.dI_max_emb = p.spc.dI_max
 
@@ -87,7 +89,7 @@ begin # local optimization; TODO: define proper test condition
 
     prob = FittingProblem(
         data, 
-        simulator, 
+        simulator!, 
         parameters, 
         debkiss.parameters
         )
@@ -110,7 +112,7 @@ using OptimizationEvolutionary
 
     prob = FittingProblem(
         data, 
-        simulator, 
+        simulator!, 
         parameters, 
         debkiss.parameters
         )
@@ -122,7 +124,7 @@ using OptimizationEvolutionary
     display(plt)
     EcotoxModelFitting.parameter_table(prob, res; sigdigits =10) |> display
 
-    # these values were checked manually
+    # these values were checked manually for the given random seed
 
     @test res.sol.u[1] ≈ 14.56 atol = 0.01
     @test res.sol.u[2] ≈ 0.29 atol = 0.01
@@ -131,32 +133,76 @@ end
 #@testset Bayesian inference
 using Turing, Distributions
 
-# TODO: 
-#   add log_likelihoods to Dataset
-#   test just the likelihood function
-#   construct parameter priors including sigmas
-#   construct turing model
+# original valus were -60.71, -60.06
+# interesting: for the bad fit (p0), a lower σ leads to lower likelihood
+#   for the good fit (sim_fit), a lower σ leads to higher likelihood
+# this is because good fit 
 
-data.log_likelihood_functions
+completeparams_fit = deepcopy(prob.completeparams)
+completeparams_fit[prob.fitted_param_idxs] .= res.sol.u
 
-@model function bayesian_model(data, priors, completeparams)
+completeparams_fit.spc.dI_max
+prob.completeparams.spc.dI_max
 
-    θ = ComponentVector{Real}(undef, keys(priors))
+sim_p0 = prob.simulator(prob.completeparams) |> deepcopy
+sim_fit = prob.simulator(completeparams_fit)
 
-    for k in keys(priors)
-        θ[k] ~ priors[k]
+@time EcotoxModelFitting.target(data, sim_p0)
+@time EcotoxModelFitting.target(data, sim_fit)
+
+@time EcotoxModelFitting.log_likelihood(data, sim_p0, [[50.]])
+@time EcotoxModelFitting.log_likelihood(data, sim_fit, [[50.]])
+
+priors = get_priors_normal(parameters)
+
+@model function bayesian_model(prob, priors, completeparams)
+
+    θ = zeros(length(priors.dists))
+
+    for k in eachindex(priors.dists)
+        θ[k] ~ priors.dists[k]
     end
+    
+    σ ~ Truncated(Normal(0, 100), 0, Inf)
+    sigmas = [[σ]]
 
-    completeparams[fitted_param_idxs] .= θ[sim_param_idxs]
-    sigmas = θ[sigma_param_idxs]
+    completeparams[prob.fitted_param_idxs] .= θ
+    sim_ds = prob.simulator(completeparams)
 
-    sim_ds = simulator(p)
-
-    addlogprob!(loglikelihood(data, sim_ds, sigmas))
+    ll = EcotoxModelFitting.log_likelihood(data, sim_ds, sigmas)
+    
+    @addlogprob! ll
 end
 
-chain = sample(
-    bayesian_model(data, priors, completeparams), 
-    NUTS(), 
-    1_0000
+# TODO: NUTS() fails because the individual params have eltype Float64, not Real.
+# TODO: PG() and SMC() fail because we use closures
+
+# also try:
+# IS()
+# SGLD()
+# ESS()
+# external samplers?
+# variational inference?
+
+
+completeparams = deepcopy(prob.completeparams)
+@time chain = sample(
+    bayesian_model(prob, priors, completeparams), 
+    Emcee(100), 
+    2_500, 
+    progress = true, 
+    discard_adapt = true
 )
+
+plot(chain)
+posterior_samples = sample(chain[[1,2]], 100; replace = false)
+
+Array(posterior_samples)
+
+sim_fit = prob.simulator(completeparams_fit) |> deepcopy
+plt = plot_data()
+@df sim_fit["tWw"] plot!(:t_day, :S)
+display(plt)
+
+
+#@testset "Approx Bayes" begin 1

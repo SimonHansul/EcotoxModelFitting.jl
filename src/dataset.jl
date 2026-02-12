@@ -97,10 +97,9 @@ function add!(
         error("For data entry $(name), `negloglike_multinomial` was specified, but no time variable. Use `time_var = :t`...")
     end
 
-    if surivival_data_likely_present(labels) && (log_likelihood_function == log_normlike)
+    if survival_data_likely_present(labels) && (log_likelihood_function == log_normlike)
         @warn "Normal likelihood was supplied for data entry $name that might include survival data. Multinomial likelihood is more appropriate for survival data."
     end
- 
 
     push!(data.names, name)
     push!(data.values, value)
@@ -122,7 +121,7 @@ function add!(
 end
 
 
-function survival_data_likely_present(labels::Vector{AbstractString})
+function survival_data_likely_present(labels::Vector{S})::Bool where S <: AbstractString
 
     c1 = sum([occursin("surviv", l) for l in labels]) > 0
     c2 = sum([occursin("mort", l) for l in labels]) > 0
@@ -229,7 +228,7 @@ function target(data::Dataset, sim::Dataset; combine_targets::Bool = true)#::Fun
 end
 
 
-function log_likelihood(data::Dataset, sim::Dataset, sigmas::Vector{Vector{Real}}; combine_likelihoods::Bool = true)#::Function
+function log_likelihood(data::Dataset, sim::Dataset, sigmas::Vector{Vector{R}}; combine_likelihoods::Bool = true) where R <: Real #::Function
 
     loglike = []
 
@@ -260,8 +259,17 @@ function log_likelihood(data::Dataset, sim::Dataset, sigmas::Vector{Vector{Real}
                 name_sim = join([string(var), "_sim"])
 
                 σ = sigmas[i][j] # sigma of the jth response varaible in the ith data entry
-
-                push!(loglike, loglikefun(joined_df[:,name_sim], joined_df[:,name_obs], σ))
+            
+                if isnothing(time_var)
+                    loglike_i = joined_df |>
+                    x -> combine(groupby(x, grouping_vars)) do df # group the joined data / simulations
+                        ll = loglikefun(df[:,name_sim], df[:,name_obs], σ) # calculate log-likelihood for the given group 
+                        return ll
+                    end |> x-> sum(x.x1) 
+                    push!(loglike, loglike_i)
+                else
+                    error("Automatized likelihood calculation currently not implemented for time-resolved data. If the data is time-resolved but the likelihood treats observations as independent (e.g. normal likelihood), set `time_var = nothing` and add the time variable to `grouping_vars`.")
+                end
             end
         elseif data[name] isa Number
             push!(loglike, loglikefun(sim[name], data[name]))

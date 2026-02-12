@@ -155,8 +155,6 @@ function getindex(prior::Prior, param::Union{String,Symbol})
     return prior.dists[index]
 end
 
-function setindex!(prior::Prior, value::Union{Distribution,Hyperdist}, param::Union{String,Symbol})
-    
 
 function setindex!(prior::Prior, value::Union{Distribution,Hyperdist}, param::Union{String,Symbol})
     
@@ -176,7 +174,6 @@ function setindex!(prior::Prior, value::Union{Distribution,Hyperdist}, param::Un
  
 end
 
-end
 
 function add_param!(prior::Prior, pair::Pair)
 
@@ -206,4 +203,55 @@ end
 
 function deftruncnorm(x, cv; l = 0, u = Inf)
     return truncated(Normal(x, cv*x), l, u)
+end
+
+
+# ---- Prior struct to use with Turing.jl
+# TODO: move Turing backend to an extension
+
+Base.@kwdef mutable struct ETMFTuringPrior <: AbstractPrior
+    labels::Vector{String} = String[]
+    dists::Vector{Distribution} = Distribution[]
+end
+
+
+"""
+Use parameter boundaries to define Uniform priors. 
+
+## Arguments
+
+- `pars::Parameters`  
+"""
+function get_priors_uniform(pars::Parameters)::ETMFTuringPrior
+
+    priors = ETMFTuringPrior()
+
+    for i in eachindex(pars.values)
+        if pars.free[i] == 1
+            l = pars.lower[i]
+            u = pars.upper[i]
+            push!(priors.labels, pars.cvec_labels[i])
+            push!(priors.dists, Uniform(l, u))
+        end
+    end
+
+    return priors
+end
+
+function get_priors_normal(pars::Parameters; cv = 0.5)::ETMFTuringPrior
+
+    priors = ETMFTuringPrior()
+
+    for i in eachindex(pars.values)
+        if pars.free[i] == 1
+            l = pars.lower[i]
+            u = pars.upper[i]
+            μ = pars.values[i]
+            σ = μ * cv
+            push!(priors.labels, pars.cvec_labels[i])
+            push!(priors.dists, Truncated(Normal(μ, σ), l, u))
+        end
+    end
+
+    return priors
 end
