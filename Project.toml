@@ -1,6 +1,6 @@
 name = "EcotoxModelFitting"
 uuid = "11baf4a3-28f5-4d66-8f46-d015c3f5447c"
-version = "0.2.2"
+version = "0.2.4"
 authors = ["SimonHansul <simonhansul@gmail.com>"]
 
 [deps]

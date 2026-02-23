@@ -69,3 +69,7 @@ The current version of EcotxoModelfitting is <1.0.0.
 ### v0.2.3
 
 - added support for `Evolutionary.CMAES`
+
+### v0.2.4
+
+- added weights to `Dataset`. weights can be supplied as a `DataFrame` column
