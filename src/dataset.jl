@@ -35,7 +35,7 @@ function add!(
     temperature::Number = NaN,
     temperature_unit::AbstractString = "K",
     error_function = sumofsquares,
-    log_likelihood_function = log_normlike,
+    log_likelihood_function = loglike_norm,
     grouping_vars = nothing, 
     response_vars = nothing,
     time_var = nothing,
@@ -202,6 +202,7 @@ function target(data::Dataset, sim::Dataset; combine_targets::Bool = true)#::Fun
 
     loss = []
 
+
     for (i,name) in enumerate(data.names)
 
         errfun = data.error_functions[i]
@@ -228,10 +229,16 @@ function target(data::Dataset, sim::Dataset; combine_targets::Bool = true)#::Fun
                 name_obs = join([string(var), "_obs"])
                 name_sim = join([string(var), "_sim"])
 
-                push!(loss, errfun(joined_df[:,name_sim], joined_df[:,name_obs], data.weights[i]))
+                t = errfun(joined_df[:,name_obs], joined_df[:,name_sim], data.weights[i])
+
+                if !isfinite(t)
+                    @warn "Obtained non-finite target error value for $(name) | $(var)"
+                end
+
+                push!(loss, t)
             end
         elseif data[name] isa Number
-            push!(loss, errfun(sim[name], data[name], data.weights[i]))
+            push!(loss, errfun(data[name], sim[name], data.weights[i]))
         else 
             error("Automatized target definition for non-DataFrames currently not implemented.")
         end
@@ -278,7 +285,7 @@ function log_likelihood(data::Dataset, sim::Dataset, sigmas::Vector{Vector{Real}
 
                 σ = sigmas[i][j] # sigma of the jth response varaible in the ith data entry
 
-                push!(loglike, loglikefun(joined_df[:,name_sim], joined_df[:,name_obs], σ, data.weights[i]))
+                push!(loglike, loglikefun(joined_df[:,name_obs], joined_df[:,name_sim], σ, data.weights[i]))
             end
         elseif data[name] isa Number
             push!(loglike, loglikefun(sim[name], data[name]))

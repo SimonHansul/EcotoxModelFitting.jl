@@ -799,7 +799,7 @@ version = "0.39.13"
     Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 
 [[deps.EcotoxModelFitting]]
-deps = ["CSV", "ComponentArrays", "DataFrames", "DataFramesMeta", "DataStructures", "Distributions", "Downloads", "DrWatson", "JLD2", "LaTeXStrings", "Latexify", "Markdown", "Optimization", "OptimizationEvolutionary", "OptimizationOptimJL", "Parameters", "Printf", "ProgressMeter", "Random", "StatsBase", "Unitful"]
+deps = ["CSV", "ComponentArrays", "DataFrames", "DataFramesMeta", "DataStructures", "Distributions", "Downloads", "DrWatson", "JLD2", "LaTeXStrings", "Latexify", "Markdown", "Optimization", "OptimizationEvolutionary", "OptimizationOptimJL", "Parameters", "PrecompileTools", "Printf", "ProgressMeter", "Random", "StatsBase", "Unitful"]
 path = ".."
 uuid = "11baf4a3-28f5-4d66-8f46-d015c3f5447c"
 version = "0.2.2"

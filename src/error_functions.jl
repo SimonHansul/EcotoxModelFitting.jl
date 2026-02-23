@@ -1,14 +1,5 @@
-#### %%%% loss functions %%%% #####
-
-
-# loss functions apply a penalty if the length of the prediction does not match the length of the data
-# we cannot simply use length(a) because the predictions have already been matched with data at this point, 
-# dropping entries for which not both exist 
-
-missing_values_penalty(nominal_length, actual_length) = 1. # (((nominal_length)+1)/(actual_length+1))^2
-
 function sumofsquares(a, b, w)
-    return sum(@. w * (a-b)^2)
+    return sum(@. w * (a - b)^2)
 end
 
 """
@@ -20,10 +11,10 @@ but with addition of weight argument and returning negative value.
 """
 function negloglike_multinomial(a, b, w)
      
-    Ndeaths =  -diff(b)       # numbers of deaths
-    Mdeaths =  -diff(a)      # conditional probabilities of deaths
+    Ndeaths =  -diff(a)      # numbers of deaths
+    Mdeaths =  -diff(b)      # conditional probabilities of deaths
     Mdeaths =  max.(Mdeaths,1e-50)   # otherwise we get problems taking the logarithm
-    pred    =  max.(a, 1e-50)      # otherwise we get problems taking the logarithm
+    pred    =  max.(b, 1e-50)      # otherwise we get problems taking the logarithm
 
     LL  = sum( w .* (Ndeaths * log(Mdeaths)) )
     return -LL
@@ -32,6 +23,13 @@ end
 
 
 ### --- TODO: deprecated the functions below --- ##
+
+# loss functions may apply a penalty if the length of the prediction does not match the length of the data
+# we cannot simply use length(a) because the predictions have already been matched with data at this point, 
+# dropping entries for which not both exist 
+
+missing_values_penalty(nominal_length, actual_length) = 1. # (((nominal_length)+1)/(actual_length+1))^2
+
 
 # mean squared error, including missing values penalty
 # default for nominal length cancels out the penalty if none is given

@@ -12,10 +12,13 @@ end
 
 include("debtest_utils.jl")
 
-tWw = load_growth_data_azoxy()
-@transform! tWw :weight = 1 ./ :S_sd 
+begin #"Target calculation with weights"
+        
+    tWw = load_growth_data_azoxy()
+    
+    @transform! tWw :weight1 = ones(length(:S_sd))
+    @transform! tWw :weight2 = :S_sd
 
-begin
     data = Dataset()
 
     add!(
@@ -26,27 +29,41 @@ begin
         labels = ["time since birth", "dry weight"], 
         grouping_vars = [:t_day],
         response_vars = [:S], 
-        weight = :weight
+        weight = :weight1
     )
     
     normalize_weights!(data)
-    @test sum(vcat(data.weights...)) ≈ 1.0
-end
+    @test sum(vcat(data.weights...)) ≈ 1.0   
 
-
-
-
-
-@testset "Computing a simple target function" begin   
-
-     # create some constant offset between simulations and data  
-    offset = rand(Uniform(-1, 1))
- 
-
+    offset = rand(Uniform(0, 1))
     sim = deepcopy(data)
     sim["tWw"] = sim["tWw"][:,[:t_day,:S]] 
-    sim["tWw"].S .+= offset
+    sim["tWw"].S .*= offset
+
+    t1 = EcotoxModelFitting.target(data, sim)
+
+    data = Dataset()
+    add!(
+        data,
+        name = "tWw",
+        value = tWw, 
+        units = ["d", "μg C"], 
+        labels = ["time since birth", "dry weight"], 
+        grouping_vars = [:t_day],
+        response_vars = [:S], 
+        weight = :weight2
+    )
+
+    normalize_weights!(data)
+    @test sum(vcat(data.weights...)) ≈ 1.0
+
+    t2 = EcotoxModelFitting.target(data, sim)
+
+    @show t1 t2 
+
+    @test t2 != t1
 end
+
 
 using LaTeXStrings
 using Unitful  
@@ -99,6 +116,8 @@ begin # local optimization; TODO: define proper test condition
         debkiss.parameters
         )
 
+    _ = prob.simulator(debkiss.parameters)
+
     @time global res = EcotoxModelFitting.solve(prob)
     sim_fit = res.objective(res.sol.u; return_sim = true)
 
@@ -108,3 +127,4 @@ begin # local optimization; TODO: define proper test condition
     plot_data()
     @df sim_fit["tWw"] plot!(:t_day, :S)
 end
+

@@ -134,3 +134,45 @@ function extract_simkey(sims::AbstractVector, key::Symbol)::DataFrame
     clean
 end
 
+
+
+
+function _get_minimal_problem()
+
+    data = Dataset()
+
+    t = Float64.(0:10)
+    add!(
+        data,
+        name = "tY", 
+        value = DataFrame(t = t, Y = t .^2), 
+        units = ["d", "-"], 
+        labels = ["time", "response"], 
+        grouping_vars = [:t],
+        response_vars = [:Y]
+    )
+
+    sim_ds = deepcopy(data)
+
+    function simulator(p)
+        Y = t .^ p.α
+        sim_ds["tY"][:,:Y] = Y
+        return sim_ds
+    end
+    
+    pars = Parameters(
+        "α" => (value = 1, free = 1, lower = 0, upper = 100, label = "α", description = "toy parameter", unit = "-"), 
+        
+    )
+
+    completeparams = pars |> to_cvec
+
+    prob = FittingProblem(
+        data, 
+        simulator, 
+        pars, 
+        completeparams
+        )
+
+    return prob
+end
