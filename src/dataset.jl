@@ -143,6 +143,14 @@ function get_weights(df::AbstractDataFrame, w::Symbol)::Vector{Float64}
     return df[:,w]
 end
 
+function get_weights(val::Number, w::Nothing)::Vector{Float64}
+    return [1.0]
+end
+
+function get_weights(val::Number, w::Float64)::Vector{Float64}
+    return [w]
+end
+
 function normalize_weights!(data::AbstractDataset)::Nothing
 
     sum_weights = sum(vcat(data.weights...))
@@ -220,10 +228,10 @@ function target(data::Dataset, sim::Dataset; combine_targets::Bool = true)#::Fun
                 name_obs = join([string(var), "_obs"])
                 name_sim = join([string(var), "_sim"])
 
-                push!(loss, errfun(joined_df[:,name_sim], joined_df[:,name_obs]))
+                push!(loss, errfun(joined_df[:,name_sim], joined_df[:,name_obs], data.weights[i]))
             end
         elseif data[name] isa Number
-            push!(loss, errfun(sim[name], data[name]))
+            push!(loss, errfun(sim[name], data[name], data.weights[i]))
         else 
             error("Automatized target definition for non-DataFrames currently not implemented.")
         end
@@ -270,7 +278,7 @@ function log_likelihood(data::Dataset, sim::Dataset, sigmas::Vector{Vector{Real}
 
                 σ = sigmas[i][j] # sigma of the jth response varaible in the ith data entry
 
-                push!(loglike, loglikefun(joined_df[:,name_sim], joined_df[:,name_obs], σ))
+                push!(loglike, loglikefun(joined_df[:,name_sim], joined_df[:,name_obs], σ, data.weights[i]))
             end
         elseif data[name] isa Number
             push!(loglike, loglikefun(sim[name], data[name]))

@@ -23,7 +23,7 @@ mutable struct FittingProblem
         completeparams::Union{ComponentVector,Nothing} = nothing
         )
 
-        psim = deepcopy(completeparams)
+        psim = deepcopy(completeparams) # TBD: this is unused; shoud we have prob.psim = psim?
         fitted_param_idxs = get_fitted_param_idxs(completeparams, parameters) 
 
         prob = new()
@@ -31,7 +31,7 @@ mutable struct FittingProblem
         prob.simulator = simulator
         prob.parameters = parameters
         prob.completeparams = isnothing(completeparams) ? deepcopy(parameters.values) : deepcopy(completeparams)
-        prob.fitted_param_idxs = get_fitted_param_idxs(prob.completeparams, parameters)
+        prob.fitted_param_idxs = fitted_param_idxs
 
         return prob
 

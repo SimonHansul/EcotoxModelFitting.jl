@@ -7,23 +7,31 @@
 
 missing_values_penalty(nominal_length, actual_length) = 1. # (((nominal_length)+1)/(actual_length+1))^2
 
-function sumofsquares(a, b)
-    return sum(@. (a-b)^2)
-end
-
 function sumofsquares(a, b, w)
     return sum(@. w * (a-b)^2)
 end
 
-function negloglike_multinomial(a, b)
-    error("Multinomial log-likelihood needs to be implemented here")
-end
+"""
+    negloglike_multinomial(a, b, w)
 
+Negative multinomial log-likelihood. 
+Calculations as in [cvasi](https://github.com/cvasi-tktd/cvasi/blob/4fc867edf4e79a13322224923f029d646859304c/R/lik_profile.R#L926), 
+but with addition of weight argument and returning negative value.
+"""
 function negloglike_multinomial(a, b, w)
-    error("Multinomial log-likelihood needs to be implemented here")
+     
+    Ndeaths =  -diff(b)       # numbers of deaths
+    Mdeaths =  -diff(a)      # conditional probabilities of deaths
+    Mdeaths =  max.(Mdeaths,1e-50)   # otherwise we get problems taking the logarithm
+    pred    =  max.(a, 1e-50)      # otherwise we get problems taking the logarithm
+
+    LL  = sum( w .* (Ndeaths * log(Mdeaths)) )
+    return -LL
+    
 end
 
-### --- the functions below will be deprecated --- ##
+
+### --- TODO: deprecated the functions below --- ##
 
 # mean squared error, including missing values penalty
 # default for nominal length cancels out the penalty if none is given
