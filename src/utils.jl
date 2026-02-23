@@ -108,17 +108,24 @@ check_for_nonfinite(x::Any)::Bool = true
 
 
 """
-Given a vector of simulation outputs, where each simulation is a `Dict`, 
-this will concatenate a given key across all vector elements. 
+    extract_simkey(sims::AbstractVector, key::Symbol)::DataFrame
+    
+Collect data entries with identical names from a vector of `Dataset`s or `Dict`s.
+This also works for `Dataset`, since `Dataset`s are indexable like `Dicts`.
 
-For example:
+## Arguments
 
+- `sims::AbstractVector`
+- `key::Symbol`
+
+## Examples
+
+
+```Julia
+
+sims = [simulator(p) for _ in 1:10] # run some simulator 10 times; each simulation output is a `Dataset`
+exctract_simkey(sims, :larvae) # returns a single `DataFrame`
 ```
-sims = [simulator(p) for _ in 1:10] # run some simulator 10 times
-sims[1] # --> this is a dict of dataframes
-exctract_simkey(sims, :larvae) # this returns a single dataframe
-```
-
 """
 function extract_simkey(sims::AbstractVector, key::Symbol)::DataFrame
     return filter(!isnothing, sims) |> 
@@ -126,5 +133,4 @@ function extract_simkey(sims::AbstractVector, key::Symbol)::DataFrame
     x -> vcat(x...) |> 
     clean
 end
-
 

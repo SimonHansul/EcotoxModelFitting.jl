@@ -27,7 +27,7 @@ include("utils.jl")
 export C2K
 
 include("dataset.jl")
-export Dataset, add!, getinfo, get_target
+export Dataset, add!, getinfo, get_target, normalize_weights!
 
 include("parameters.jl")
 return Parameters

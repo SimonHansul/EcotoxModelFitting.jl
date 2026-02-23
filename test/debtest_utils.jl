@@ -19,7 +19,7 @@ end
 
 function load_growth_data_azoxy(;controls_only = true)
 
-    growth = CSV.read("test/DEB/data/azoxy_static_growth_tidy.csv", DataFrame) |>
+    growth = CSV.read("test/data/azoxy_static_growth_tidy.csv", DataFrame) |>
     x -> x[BitVector(min.(1, (x.C_W .== 0) .+ (!controls_only))),:] |> 
     x -> combine(groupby(x, [:t_day, :C_W])) do df
 
@@ -41,7 +41,7 @@ end
 
 function load_repro_data_azoxy(;controls_only=true)
 
-    repro = CSV.read("test/DEB/data/azoxy_static_repro_tidy.csv", DataFrame) |> 
+    repro = CSV.read("test/data/azoxy_static_repro_tidy.csv", DataFrame) |> 
     x -> x[BitVector(min.(1, (x.C_W .== 0) .+ (!controls_only))),:] |> 
     x -> combine(groupby(x, [:t_day, :C_W])) do df
 
@@ -76,7 +76,7 @@ end
 
 function load_growth_data_dm1()
 
-    growth = CSV.read("test/DEB/data/dm1_test_data_growth.csv", DataFrame) |>
+    growth = CSV.read("test/data/dm1_test_data_growth.csv", DataFrame) |>
     x -> x[(x.metal .== "Co") .& (x.food .== "D"),[:replicate,:Length,:tday,:observation_weight]] |> 
     x -> combine(groupby(x, :tday)) do df
 

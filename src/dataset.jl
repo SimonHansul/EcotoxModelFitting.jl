@@ -6,6 +6,7 @@ Base.@kwdef mutable struct Dataset <: AbstractDataset
     metadata::AbstractDict = Dict()
     names::Vector{AbstractString} = AbstractString[]
     values::Vector{Union{Number,Matrix,DataFrame}} = Union{Number,Matrix,DataFrame}[]
+    weights::Vector{Vector{Float64}} = Vector{Float64}[]
     error_functions::Vector{Function} = Function[]
     log_likelihood_functions::Vector{Function} = Function[]
     targets_closured::Tuple = ()
@@ -30,6 +31,7 @@ function add!(
     value::Union{Number,Matrix,DataFrame},
     units::Any,
     labels::Any,
+    weight::Union{Nothing,Symbol} = nothing,
     temperature::Number = NaN,
     temperature_unit::AbstractString = "K",
     error_function = sumofsquares,
@@ -44,6 +46,8 @@ function add!(
     if name in data.names
         error("Data names have to be unique. Got existing name $name.")
     end
+
+    weightvec = get_weights(value, weight)
 
     if (temperature_unit == "K") && (temperature < 200)
         error("Implausible temperature $(temperature) K given for $(name)")
@@ -111,9 +115,10 @@ function add!(
     push!(data.bibkeys, bibkey)
     push!(data.zerovariate, value isa Number)
     push!(data.comments, comment)
+    push!(data.weights, weightvec)
 
     return nothing
-    
+
 end
 
 import Base.getindex
@@ -127,6 +132,25 @@ end
 function setindex!(data::AbstractDataset, value::Union{Number,Matrix,DataFrame}, name::String)::Nothing
     idx = findfirst(x -> x==name, data.names)
     data.values[idx] = value
+    return nothing
+end
+
+function get_weights(df::AbstractDataFrame, w::Nothing)::Vector{Float64}
+    return ones(nrow(df))
+end
+
+function get_weights(df::AbstractDataFrame, w::Symbol)::Vector{Float64}
+    return df[:,w]
+end
+
+function normalize_weights!(data::AbstractDataset)::Nothing
+
+    sum_weights = sum(vcat(data.weights...))
+
+    for wv in data.weights
+        wv ./= sum_weights
+    end
+
     return nothing
 end
 
