@@ -18,9 +18,8 @@ end
 """
 Convert problem + optimization result to a markdown table with estimates.
 """
-function parameter_table(prob::FittingProblem, res::OptimizationResult; backend = "markdown", sigdigits = 2)
-    
-    idxs = findall(prob.parameters.free) # indices of free parameters in Parameters object
+function parameter_table(prob::FittingProblem, res::OptimizationResult; free_only = false, backend = "markdown", sigdigits = 2)
+        
     pars = prob.parameters
 
     header = "| Label | Value | Free | Unit | Description |\n|-------|----|----------|------|-------------|"
@@ -37,11 +36,16 @@ function parameter_table(prob::FittingProblem, res::OptimizationResult; backend 
         else 
             value = fround.(pars.values[i], sigdigits = sigdigits)
         end
-        label = pars.labels[i]
-        free = Bool(pars.free[i])
-        unit = pars.units[i]
-        description = pars.descriptions[i]
-        push!(rows, "| $(label) | $(value) | $(free) | $(unit) | $(description) |")
+
+        if (!free_only) || (pars.free[i] == 1)
+
+            label = pars.labels[i]
+            free = Bool(pars.free[i])
+            unit = pars.units[i]
+            description = pars.descriptions[i]
+            push!(rows, "| $(label) | $(value) | $(free) | $(unit) | $(description) |")
+
+        end
     end
     if backend == "markdown"
         return Markdown.parse(join([header; rows], "\n"))
