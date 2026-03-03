@@ -1,3 +1,18 @@
+function parse_comments(file)
+
+    comments = String[]
+
+    open(file) do io
+        for line in eachline(io)
+            startswith(strip(line), "#") && push!(comments, line)
+        end
+    end
+
+    comments = strip.(replace.(comments, r"^#\s*" => ""))
+
+    return comments
+
+end
 
 """
 Reads CSV files, assuming that comment lines start with `#` (https://w3c.github.io/csvw/primer/).
