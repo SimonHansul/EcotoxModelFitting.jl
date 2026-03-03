@@ -1,6 +1,6 @@
 module EcotoxModelFitting
 using Distributions
-using DataFrames, DataFramesMeta
+using DataFrames, DataFramesMeta, CSV
 using ProgressMeter
 using DataStructures
 using Parameters

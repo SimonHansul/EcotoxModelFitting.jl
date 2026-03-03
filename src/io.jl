@@ -1,4 +1,8 @@
 
+"""
+Reads CSV files, assuming that comment lines start with `#` (https://w3c.github.io/csvw/primer/).
+Returns a `DataFrame` and displays comments.
+"""
 function read_file(file)
     
     df = CSV.read(file, DataFrame, comment = "#")
@@ -7,8 +11,6 @@ function read_file(file)
     
     if !isempty(comments)
         display(comments)
-        #md = Markdown.parse(join(comments, " <br> "))
-        #display(md)
     end
 
     return df

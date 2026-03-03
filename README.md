@@ -77,3 +77,8 @@ The current version of EcotxoModelfitting is <1.0.0.
 ### v0.2.5
 
 - added kwarg `free_only` to `parameter_table`
+
+
+### v0.2.6
+
+- added CSV dependency
