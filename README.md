@@ -82,4 +82,7 @@ The current version of EcotxoModelfitting is <1.0.0.
 ### v0.2.6
 
 - added CSV dependency
-- fi
+
+### v0.2.7
+
+- changes to IO/utilities
