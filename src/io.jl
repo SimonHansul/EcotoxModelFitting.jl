@@ -35,7 +35,7 @@ end
 """
 Convert problem + optimization result to a markdown table with estimates.
 """
-function parameter_table(prob::FittingProblem, res::OptimizationResult; free_only = false, backend = "markdown", sigdigits = 2)
+function markdown_table(prob::FittingProblem, res::OptimizationResult; free_only = false, sigdigits = 2)
         
     pars = prob.parameters
 
@@ -64,9 +64,7 @@ function parameter_table(prob::FittingProblem, res::OptimizationResult; free_onl
 
         end
     end
-    if backend == "markdown"
-        return Markdown.parse(join([header; rows], "\n"))
-    else
-        error("Backends other than markdown not yet implemented")
-    end
+   
+    return Markdown.parse(join([header; rows], "\n"))
+ 
 end
