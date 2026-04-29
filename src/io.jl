@@ -39,7 +39,7 @@ function parameter_table(prob::FittingProblem, res::OptimizationResult; free_onl
         
     pars = prob.parameters
 
-    header = "| Label | Value | Free | Unit | Description |\n|-------|----|----------|------|-------------|"
+    header = "| Label | Value | Free | Unit | Description |\n|-----|-----|-----|-----|------|"
     rows = String[]
 
     idx_free = 1
