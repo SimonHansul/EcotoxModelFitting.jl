@@ -60,6 +60,7 @@ end
 
 
 # TODO: these are things that might be moved to a separate PMC extension
+# kept now for backwards compatibility
 
 # reserved column names for the posterior -> cannot be used as parameter names
 const RESERVED_COLNAMES = ["loss", "weight", "model", "chain"]#
