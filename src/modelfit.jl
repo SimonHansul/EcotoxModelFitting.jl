@@ -7,7 +7,7 @@ mutable struct ModelFit
     simulator::Function
     loss::Function
     loss_functions::AbstractVector
-    data::OrderedDict
+    data::Union{AbstractDataset,OrderedDict}
     time_var::Symbol
     response_vars::Vector{Vector{Symbol}}
     grouping_vars::Vector{Vector{Symbol}}
@@ -194,8 +194,8 @@ function generate_fitting_simulator(completeparams, prior::Prior, simulator::Fun
     idxs = [findfirst(x -> x == l, pfit_labels) for l in prior.labels]
 
     function fitting_simulator(pvec::Vector{R}; kwargs...) where R <: Real
-        
-        psim = pfit[threadid()] # pick the parameter copy for the current thread
+        psim = deepcopy(completeparams)
+        #psim = pfit[idx] # pick the parameter copy for the current thread
 
         psim[idxs[.!prior.is_hyper]] = pvec[.!prior.is_hyper] # assign "normal" parameters directly
         psim[idxs[prior.is_hyper]] = [gendist(h) for (gendist,h) in zip(prior.gendists, pvec[prior.is_hyper])] # assign hyperparameters through the appropriate gendist function

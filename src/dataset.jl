@@ -20,13 +20,14 @@ Base.@kwdef mutable struct Dataset <: AbstractDataset
     time_vars::Vector{Union{Symbol,Int64,Nothing}} = Union{Symbol,Int64,Nothing}[]
     zerovariate::Vector{Bool} = Bool[]
     comments::Vector{String} = String[]
+    skip::Vector{Bool} = Bool[]
 end
 
 """
 Add entry to a dataset.
 """
 function add!(
-    data::AbstractDataset; 
+    data::Dataset; 
     name::AbstractString, 
     value::Union{Number,Matrix,DataFrame},
     units::Any,
@@ -40,7 +41,8 @@ function add!(
     response_vars = nothing,
     time_var = nothing,
     bibkey = "",
-    comment = ""
+    comment = "", 
+    skip = false
     )::Nothing
 
     if name in data.names
@@ -62,7 +64,7 @@ function add!(
     end
 
     # input validation for DataFrames
-    if typeof(value) <: DataFrame
+    if (typeof(value) <: DataFrame) && !skip
         if !((eltype(grouping_vars) <: Symbol) || (eltype(grouping_vars) <: Integer) || (isnothing(grouping_vars)))
             error("For data entry $(name), expected grouping variables to be given as Symbols or Integers.")
         end
@@ -116,9 +118,20 @@ function add!(
     push!(data.zerovariate, value isa Number)
     push!(data.comments, comment)
     push!(data.weights, weightvec)
+    push!(data.skip, skip)
 
     return nothing
 
+end
+
+struct MinimalDataset <: AbstractDataset
+    names::Vector{AbstractString}
+    values::Vector{Union{Number,Matrix,DataFrame}} = Union{Number,Matrix,DataFrame}[]
+end
+
+function add!(data::MinimalDataset; name, value)
+    push!(data.names, name)
+    push!(data.names, value)
 end
 
 import Base.getindex
@@ -205,42 +218,40 @@ function target(data::Dataset, sim::Dataset; combine_targets::Bool = true)#::Fun
 
     for (i,name) in enumerate(data.names)
 
-        errfun = data.error_functions[i]
-        grouping_vars = data.grouping_vars[i]
-        response_vars = data.response_vars[i]
-        time_var = data.time_vars[i]
+        if !(data.skip[i])
 
-        # if the entry is some kind of DataFrame, we could have an arbitrary number of response variables
-        if data[name] isa AbstractDataFrame
+            errfun = data.error_functions[i]
+            grouping_vars = data.grouping_vars[i]
+            response_vars = data.response_vars[i]
+            time_var = data.time_vars[i]
 
-            for (j,var) in enumerate(response_vars) 
+            # if the entry is some kind of DataFrame, we could have an arbitrary number of response variables
+            if data[name] isa AbstractDataFrame
+                for (j,var) in enumerate(response_vars) 
+                    joined_df = leftjoin(
+                        data[name], 
+                        sim[name], 
+                        on = _joinvars(grouping_vars, time_var), 
+                        makeunique = true, 
+                        renamecols = "_obs" => "_sim"
+                        )
 
-                # TODO: can we re-write this so that we only join once per entry?
-                #   maybe write a single target_closured for this entry that joins + applies errfuns
-                # TODO: allow for different error models in the same entry. number of error models should match number of response variables.
-                joined_df = leftjoin(
-                    data[name], 
-                    sim[name], 
-                    on = _joinvars(grouping_vars, time_var), 
-                    makeunique = true, 
-                    renamecols = "_obs" => "_sim"
-                    )
+                    name_obs = join([string(var), "_obs"])
+                    name_sim = join([string(var), "_sim"])
 
-                name_obs = join([string(var), "_obs"])
-                name_sim = join([string(var), "_sim"])
+                    t = errfun(joined_df[:,name_obs], joined_df[:,name_sim], data.weights[i])
 
-                t = errfun(joined_df[:,name_obs], joined_df[:,name_sim], data.weights[i])
+                    if !isfinite(t)
+                        @warn "Obtained non-finite target error value for $(name) | $(var)"
+                    end
 
-                if !isfinite(t)
-                    @warn "Obtained non-finite target error value for $(name) | $(var)"
+                    push!(loss, t)
                 end
-
-                push!(loss, t)
+            elseif data[name] isa Number
+                push!(loss, errfun(data[name], sim[name], data.weights[i]))
+            else 
+                error("Automatized target definition for non-DataFrames currently not implemented.")
             end
-        elseif data[name] isa Number
-            push!(loss, errfun(data[name], sim[name], data.weights[i]))
-        else 
-            error("Automatized target definition for non-DataFrames currently not implemented.")
         end
     end
 

@@ -66,11 +66,13 @@ function generate_loss_function(f::ModelFit)::Function
 
             if length(join_vars[i])>0
                 # merge the corresponding data with prediction 
+                
                 eval_df = leftjoin(
                     data[key], sim[key], 
                     on = join_vars[i], 
                     makeunique = true
                     ) |> dropmissing
+                
                 # for each response variable in the table   
                 for (j,var) in enumerate(f.response_vars[i]) 
                     idx += 1
