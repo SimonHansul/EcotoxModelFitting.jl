@@ -24,6 +24,8 @@ import Base: getindex
 import Base: setindex!
 import Base:show
 
+abstract type CustomDist end
+
 include("utils.jl")
 export C2K
 

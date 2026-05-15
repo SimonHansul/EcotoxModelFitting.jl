@@ -1,14 +1,11 @@
 abstract type AbstractDataset end
 
-@enum DimensionalityType zerovariate univariate multivariate
-
 Base.@kwdef mutable struct Dataset <: AbstractDataset 
     metadata::AbstractDict = Dict()
     names::Vector{AbstractString} = AbstractString[]
     values::Vector{Union{Number,Matrix,DataFrame}} = Union{Number,Matrix,DataFrame}[]
     weights::Vector{Vector{Float64}} = Vector{Float64}[]
-    error_functions::Vector{Function} = Function[]
-    log_likelihood_functions::Vector{Function} = Function[]
+    targets::Vector{Function} = Function[] # TODO: use FunctionWrappers.jl instead of Vector of functions (type instabilities)
     targets_closured::Tuple = ()
     units::Vector{Vector{String}} = Vector{String}[]
     labels::Vector{Vector{String}} = Vector{String}[]
@@ -35,8 +32,7 @@ function add!(
     weight::Union{Nothing,Symbol} = nothing,
     temperature::Number = NaN,
     temperature_unit::AbstractString = "K",
-    error_function = sumofsquares,
-    log_likelihood_function = loglike_norm,
+    targfun::Function = symmbound,
     grouping_vars = nothing, 
     response_vars = nothing,
     time_var = nothing,
@@ -99,7 +95,7 @@ function add!(
         response_vars = Symbol[]
     end
 
-    if (error_function == negloglike_multinomial) && (isnothing(time_var))
+    if (targfun == negloglike_multinomial) && (isnothing(time_var))
         error("For data entry $(name), `negloglike_multinomial` was specified, but no time variable. Use `time_var = :t`...")
     end
 
@@ -109,8 +105,7 @@ function add!(
     push!(data.labels, labels)
     push!(data.temperatures, temperature)
     push!(data.temperature_units, temperature_unit)
-    push!(data.error_functions, error_function)
-    push!(data.log_likelihood_functions, log_likelihood_function)
+    push!(data.targets, targfun)
     push!(data.grouping_vars, grouping_vars)
     push!(data.response_vars, response_vars)
     push!(data.time_vars, time_var)
@@ -124,14 +119,14 @@ function add!(
 
 end
 
-struct MinimalDataset <: AbstractDataset
-    names::Vector{AbstractString}
+Base.@kwdef mutable struct MinimalDataset <: AbstractDataset
+    names::Vector{AbstractString} = String[]
     values::Vector{Union{Number,Matrix,DataFrame}} = Union{Number,Matrix,DataFrame}[]
 end
 
 function add!(data::MinimalDataset; name, value)
     push!(data.names, name)
-    push!(data.names, value)
+    push!(data.values, value)
 end
 
 import Base.getindex
@@ -198,6 +193,23 @@ function _joinvars(grouping_vars::AbstractVector, time_vars::Vector{Symbol})
     return vcat(grouping_vars, time_vars)
 end
 
+import Base: join
+
+function join(data::AbstractDataFrame, sim::AbstractDataFrame, joinvars)
+
+    if !isempty(joinvars)
+        return leftjoin(
+            data, 
+            sim, 
+            on = joinvars, 
+            makeunique = true,
+            )
+    else
+        return hcat(data, sim, makeunique=true)
+    end
+end
+
+
 """
 Compute target(s), i.e error functions for all response variables in a `Dataset`. 
 
@@ -211,16 +223,15 @@ Compute target(s), i.e error functions for all response variables in a `Dataset`
 - `combine_targets::Bool = true`: whether to return the sum of targets or the individual values
 
 """
-function target(data::Dataset, sim::Dataset; combine_targets::Bool = true)#::Function
+function target(data::AbstractDataset, sim::AbstractDataset; combine_targets::Bool = true)#::Function
 
-    loss = []
-
+    target_tot = []
 
     for (i,name) in enumerate(data.names)
 
         if !(data.skip[i])
 
-            errfun = data.error_functions[i]
+            errfun = data.targets[i]
             grouping_vars = data.grouping_vars[i]
             response_vars = data.response_vars[i]
             time_var = data.time_vars[i]
@@ -228,27 +239,26 @@ function target(data::Dataset, sim::Dataset; combine_targets::Bool = true)#::Fun
             # if the entry is some kind of DataFrame, we could have an arbitrary number of response variables
             if data[name] isa AbstractDataFrame
                 for (j,var) in enumerate(response_vars) 
-                    joined_df = leftjoin(
+                    @show name var grouping_vars time_var
+                    joined = join(
                         data[name], 
                         sim[name], 
-                        on = _joinvars(grouping_vars, time_var), 
-                        makeunique = true, 
-                        renamecols = "_obs" => "_sim"
+                        _joinvars(grouping_vars, time_var)
                         )
 
-                    name_obs = join([string(var), "_obs"])
-                    name_sim = join([string(var), "_sim"])
+                    name_obs = string(var)
+                    name_sim = join([string(var), "_1"])
 
-                    t = errfun(joined_df[:,name_obs], joined_df[:,name_sim], data.weights[i])
+                    target_part = errfun(joined[:,name_obs], joined[:,name_sim], data.weights[i])
 
-                    if !isfinite(t)
+                    if ismissing(target_part) || !isfinite(target_part)
                         @warn "Obtained non-finite target error value for $(name) | $(var)"
                     end
 
-                    push!(loss, t)
+                    push!(target_tot, target_part)
                 end
             elseif data[name] isa Number
-                push!(loss, errfun(data[name], sim[name], data.weights[i]))
+                push!(target_tot, errfun(data[name], sim[name], data.weights[i]))
             else 
                 error("Automatized target definition for non-DataFrames currently not implemented.")
             end
@@ -256,13 +266,12 @@ function target(data::Dataset, sim::Dataset; combine_targets::Bool = true)#::Fun
     end
 
     if combine_targets
-        return sum(loss)
+        return sum(target_tot)
     else
-        return loss
+        return target_tot
     end
        
 end
-
 
 function log_likelihood(data::Dataset, sim::Dataset, sigmas::Vector{Vector{Real}}; combine_likelihoods::Bool = true)#::Function
 

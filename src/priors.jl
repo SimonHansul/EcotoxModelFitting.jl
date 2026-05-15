@@ -6,7 +6,7 @@ abstract type AbstractPrior end
 
 A mutable struct for hyper-distributions in multi-level modelling. 
 """
-mutable struct Hyperdist
+mutable struct Hyperdist <: CustomDist
     gendist::Function
     dist::Distribution
 end

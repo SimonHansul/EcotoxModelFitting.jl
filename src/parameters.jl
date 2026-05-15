@@ -5,6 +5,7 @@ mutable struct Parameters <: AbstractParameters
     values::Vector{Float64}
     lower::Vector{Float64}
     upper::Vector{Float64}
+    priors::Union{Nothing,Vector{Union{Distribution,CustomDist}}} # FIXME: this is probably super inefficient because CustomDist could be anything. At some point it will be preferrable to get rid of Hyperdist altogether
     free::Vector{Bool}
     labels::Vector{AbstractString}
     units::Vector{Union{AbstractString,Unitful.Unitlike}}
@@ -18,8 +19,8 @@ mutable struct Parameters <: AbstractParameters
     ```Julia
 
     parameters = Parameters(
-        alpha = (value = 0.1, lower = 0, upper = 1, free = 1, label = "α", unit = "-", description = "example parameter"),
-        beta = (value = 0.1, lower = 0, upper = Inf, free = 0, label = "β", unit = "-", description = "another example parameter - this one will stay fixed"),
+        "alpha" => (value = 0.1, lower = 0, upper = 1, free = 1, label = "α", unit = "-", description = "example parameter"),
+        "beta" = (value = 0.1, lower = 0, upper = Inf, free = 0, label = "β", unit = "-", description = "another example parameter - this one will stay fixed"),
     )
 
     ```
@@ -36,6 +37,12 @@ mutable struct Parameters <: AbstractParameters
         p.units = Union{AbstractString,Unitful.Unitlike}[]
         p.descriptions = AbstractString[]
 
+        if "prior" in keys(args[1].second)
+            p.priors = Distribution[]
+        else
+            p.priors = nothing
+        end
+
         for (k, v) in args
             push!(p.cvec_labels, String(k))
             push!(p.values, v.value)
@@ -43,6 +50,14 @@ mutable struct Parameters <: AbstractParameters
             push!(p.labels, v.label)
             push!(p.units, get(v, :unit, ""))
             push!(p.descriptions, v.description)
+
+            if "prior" in keys(v)
+                if !isnpothing(p.priors)
+                    push!(p.priors, v.prior)
+                else
+                    error("Did not find prior argument in first parameter, but in $(k). Either all or none of the parameters need to have priors associated.")
+                end
+            end
 
             :lower in keys(v) ? push!(p.lower, v.lower) : push!(p.lower, 0)
             :upper in keys(v) ? push!(p.upper, v.upper) : push!(p.upper, Inf)

@@ -2,6 +2,10 @@ function sumofsquares(a, b, w)
     return sum(@. w * (a - b)^2)
 end
 
+function symmbound(a, b, w)
+    return sum(((w ./ length(a)) .* (((a .- b) .^2) ./(mean(a)^2 + mean(b)^2))))
+end
+
 """
     negloglike_multinomial(a, b, w)
 
@@ -45,9 +49,6 @@ function loss_sse(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_le
     return missing_values_penalty(nominal_length, length(b)) * sum(weight .* (a .- b).^2)
 end
 
-function loss_symmbound(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_length::Int = length(b))::Float64
-    return missing_values_penalty(nominal_length, length(b)) * sum(((weight ./ length(a)) .* (((a .- b) .^2)/(mean(a)^2 + mean(b)^2))))
-end
 
 function loss_mse_logtransform(a::Vector{Float64}, b::Vector{Float64}, weight = 1, nominal_length::Int = length(b))::Float64
     return missing_values_penalty(nominal_length, length(b)) * sum(weight .* (log.(a .+ 1) .- log.(b .+ 1)).^2)/length(a)
