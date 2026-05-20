@@ -32,10 +32,7 @@ end
 #    return target(obj.dataset, sim)
 #end
 
-
-function (obj::ObjectiveFunction)(p::Vector{Float64}; return_sim::Bool=false)::Union{Float64,Dataset}
-
-    
+function (obj::ObjectiveFunction)(p::Vector; return_sim::Bool=false)::Union{Float64,Dataset} 
     obj.completeparams[obj.fitted_param_idxs] .= p
     sim = obj.simulator(obj.completeparams)
     t =  target(obj.dataset, sim)
@@ -68,6 +65,8 @@ function solve(prob::FittingProblem, alg::Union{NelderMead} = OptimizationOptimJ
         @warn "Upper boundaries are currently ignored during local optimization."
     end
 
+    @show p0
+
     optim_prob = OptimizationProblem(optfun, p0)
     result = OptimizationResult(alg, objective)
     result.objective = objective
@@ -97,7 +96,6 @@ function solve(
     objective = ObjectiveFunction(dataset, simulator, completeparams, fitted_param_idxs)
     optfun(u,p) = objective(u)
 
-    
     p0 = values(parameters.values[parameters.free]) |> collect
 
     optim_prob = OptimizationProblem(optfun, p0)
@@ -112,12 +110,25 @@ function solve(
         end
     end
 
+    # use optimization.jl to solve the problem
     optim_prob = OptimizationProblem(optfun, p0, lb = lb, ub = ub)
     sol = Optimization.solve(optim_prob, alg)
 
+    # pack into custom OptimizationResult type
     res = OptimizationResult(alg, objective)
     res.objective = objective
     res.sol = sol
 
     return res
+end
+
+"""
+Returns copy of `prob.completeparams` with fitted and fixed parameters.
+"""
+function get_pfit(prob::FittingProblem, res::AbstractFittingResult)
+
+    p_fit = deepcopy(prob.completeparams)
+    p_fit[prob.fitted_param_idxs] .= res.sol.u
+
+    return p_fit
 end

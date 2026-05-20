@@ -1,4 +1,9 @@
-
+mutable struct PMCResult <: AbstractFittingResult
+    particles
+    weights
+    dists
+    vars
+end
 
 """
     prior_prob(prior::Prior, theta::AbstractVector)
@@ -87,7 +92,7 @@ kwargs
 """
 function run_PMC!(
     f::ModelFit; 
-    dist = f.loss, 
+    dist = loss, 
     n::Int = 1000,
     n_init::Union{Nothing,Int} = nothing,
     q_dist::Float64 = .1,

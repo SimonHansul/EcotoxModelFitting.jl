@@ -239,7 +239,6 @@ function target(data::AbstractDataset, sim::AbstractDataset; combine_targets::Bo
             # if the entry is some kind of DataFrame, we could have an arbitrary number of response variables
             if data[name] isa AbstractDataFrame
                 for (j,var) in enumerate(response_vars) 
-                    @show name var grouping_vars time_var
                     joined = join(
                         data[name], 
                         sim[name], 
@@ -264,6 +263,8 @@ function target(data::AbstractDataset, sim::AbstractDataset; combine_targets::Bo
             end
         end
     end
+
+    replace!(target_tot, NaN => Inf)
 
     if combine_targets
         return sum(target_tot)

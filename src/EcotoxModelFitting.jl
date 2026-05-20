@@ -39,7 +39,7 @@ include("fitting_problem.jl")
 export FittingProblem
 
 include("optimization_backend.jl")
-export AbstractFittingResult, OptimizationResult
+export AbstractFittingResult, OptimizationResult, get_pfit
 
 include("error_functions.jl") 
 export sumofsquares, negloglike_multinomial
@@ -72,7 +72,7 @@ export Prior, deftruncnorm
 
 include("modelfit.jl")
 
-include("populationmontecarlo.jl")
+include("pmcbackend.jl")
 export run_PMC!
 
 include("assign.jl")
@@ -92,9 +92,7 @@ include("loss_generation.jl")
 include("posterior_samples.jl")
 export posterior_sample, posterior_sample!
 
-
 export ModelFit, run_PMC!, update_data_weights!, generate_fitting_simulator, generate_loss_function, rand, posterior_sample, posterior_sample!, bestfit, generate_posterior_summary, posterior_predictions, assign_value_by_label!, assign_values_from_file!
-
 
 include("addmypet_data_retrieval.jl")
 export retrieve_amp_data, parse_mydata
