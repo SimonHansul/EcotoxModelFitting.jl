@@ -1,12 +1,10 @@
 
 function prior_predictive_check(
-    f::ModelFit;
-    compute_loss::Bool = true,
-    loss = f.loss,
+    f::PMCBackend;
     n::Int64 = 100
     )::NamedTuple
 
-    losses = Vector{Union{Float64,Vector{Float64}}}(undef, n)
+    dists = Vector{Union{Float64,Vector{Float64}}}(undef, n)
     predictions = Vector{Any}(undef,n)
     samples = Vector{Vector{Float64}}(undef, n)
 
@@ -17,21 +15,16 @@ function prior_predictive_check(
         prior_sample = rand(f.prior)
         prediction = f.simulator(prior_sample)
 
-        L = NaN
-
-        if compute_loss
-            L = loss(f.data, prediction)
-        end
+        ρ  = euclidean_distance(f.data, prediction)
 
         predictions[i] = prediction
-        losses[i] = L
+        dists[i] = ρ
         samples[i] = prior_sample
-
     end
 
     return (
         predictions = predictions,
-        losses = losses,
+        losses = dists,
         samples = samples
     )
 end

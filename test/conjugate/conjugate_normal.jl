@@ -47,7 +47,7 @@ using EcotoxModelFitting
         return plot()
     end
 
-    f = ModelFit(;
+    f = PMCBackend(;
         prior = prior, 
         data = data, 
         simulator = simulate_data, 

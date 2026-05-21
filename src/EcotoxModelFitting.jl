@@ -70,7 +70,7 @@ const RESERVED_COLNAMES = ["loss", "weight", "model", "chain"]#
 include("priors.jl")
 export Prior, deftruncnorm
 
-include("modelfit.jl")
+include("pmcbackend.jl")
 
 include("pmcbackend.jl")
 export run_PMC!
@@ -92,7 +92,7 @@ include("loss_generation.jl")
 include("posterior_samples.jl")
 export posterior_sample, posterior_sample!
 
-export ModelFit, run_PMC!, update_data_weights!, generate_fitting_simulator, generate_loss_function, rand, posterior_sample, posterior_sample!, bestfit, generate_posterior_summary, posterior_predictions, assign_value_by_label!, assign_values_from_file!
+export PMCBackend, run_PMC!, update_data_weights!, generate_pmc_simulator, generate_loss_function, rand, posterior_sample, posterior_sample!, bestfit, generate_posterior_summary, posterior_predictions, assign_value_by_label!, assign_values_from_file!
 
 include("addmypet_data_retrieval.jl")
 export retrieve_amp_data, parse_mydata

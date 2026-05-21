@@ -67,7 +67,7 @@ import EcotoxModelFitting: ComponentArrays
         return plot()
     end
 
-    f = ModelFit(;
+    f = PMCBackend(;
         prior = prior,
         data = data,
         simulator = simulate_data,
@@ -147,7 +147,7 @@ import EcotoxModelFitting: ComponentVector
 #    # Loss: simple Euclidean loss between observed and simulated counts
 #    loss_fun = EcotoxModelFitting.loss_euclidean
 #
-#    global f = ModelFit(;
+#    global f = PMCBackend(;
 #        prior = prior,
 #        data = data,
 #        simulator = simulate_data,

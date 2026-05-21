@@ -270,8 +270,75 @@ function target(data::AbstractDataset, sim::AbstractDataset; combine_targets::Bo
         return sum(target_tot)
     else
         return target_tot
+    end    
+end
+
+target(::Dataset, ::Nothing) = Inf
+euclidean_distance(::Dataset, ::Nothing) = Inf
+
+function euclidean_distance(obs::Real, sim::Real, w::Vector{Real})
+    return sqrt(w * ((sim - obs) .^ 2))
+end
+
+function euclidean_distance(
+    obs::AbstractVector{<:Real}, 
+    sim::AbstractVector{<:Real}, 
+    w::AbstractVector{<:Real}
+    )
+    return sqrt(sum(@. w * ((sim - obs) .^ 2)) )
+end
+
+"""
+    euclidean_distance(data::Dataset, sim::Dataset; combine_distances::Bool = true)
+
+Compute euclidean distance between `data` and `sim`.
+"""
+function euclidean_distance(data::Dataset, sim::AbstractDataset; combine_distances::Bool = true)
+
+    target_tot = []
+
+    for (i,name) in enumerate(data.names)
+        if !(data.skip[i]) # if skip = true, don't consider the key in the target calculation
+
+            # if the entry is some kind of DataFrame, we could have an arbitrary number of response variables
+            if data[name] isa AbstractDataFrame
+                for (j,var) in enumerate(data.response_vars[i]) 
+                    joined = join(
+                        data[name], 
+                        sim[name], 
+                        _joinvars(data.grouping_vars[i], data.time_vars[i])
+                        )
+
+                    name_obs = string(var)
+                    name_sim = join([string(var), "_1"])
+
+                    target_part = euclidean_distance(
+                        joined[:,name_obs], 
+                        Vector{Real}(joined[:,name_sim]), 
+                        data.weights[i]
+                        )
+
+                    if ismissing(target_part) || !isfinite(target_part)
+                        @warn "Obtained non-finite target error value for $(name) | $(var)"
+                    end
+
+                    push!(target_tot, target_part)
+                end
+            elseif data[name] isa Number
+                push!(target_tot, euclidean_distance(data[name], sim[name], data.weights[i]))
+            else 
+                error("Automatized target definition for non-DataFrames currently not implemented.")
+            end
+        end
     end
-       
+
+    replace!(target_tot, NaN => Inf)
+
+    if combine_distances
+        return sum(target_tot)
+    else
+        return target_tot
+    end    
 end
 
 function log_likelihood(data::Dataset, sim::Dataset, sigmas::Vector{Vector{Real}}; combine_likelihoods::Bool = true)#::Function

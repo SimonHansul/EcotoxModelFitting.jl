@@ -1,6 +1,6 @@
 name = "EcotoxModelFitting"
 uuid = "11baf4a3-28f5-4d66-8f46-d015c3f5447c"
-version = "0.2.7"
+version = "0.3.0"
 authors = ["SimonHansul <simonhansul@gmail.com>"]
 
 [deps]
@@ -28,6 +28,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
+julia = ">=1.12.1"
 CSV = "0.10.15"
 ComponentArrays = "0.15.25"
 DataFrames = "1.7.0"

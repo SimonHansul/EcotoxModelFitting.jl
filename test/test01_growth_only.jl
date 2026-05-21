@@ -81,7 +81,7 @@ includet("debtest_utils.jl")
 
     
     begin # problem definition and prior check
-        global f = ModelFit(
+        global f = PMCBackend(
             prior = prior,
             completeparams = completeparams, 
             simulator = simulator,
@@ -178,7 +178,7 @@ end
 @testset "Fitting to growth data using symmbound loss" begin
 
    begin # problem definition and prior check
-        global f = ModelFit(
+        global f = PMCBackend(
             prior = prior,
             completeparams = EcotoxSystems.completeparams, 
             simulator = simulator,

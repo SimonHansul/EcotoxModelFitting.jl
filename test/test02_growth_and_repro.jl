@@ -106,7 +106,7 @@ includet("debtest_utils.jl")
         "spc.H_p" => truncated(Normal(100, 100), 0, Inf)
     )    
 
-    global f = ModelFit(
+    global f = PMCBackend(
         prior = prior,
         completeparams = completeparams, 
         simulator = simulator,

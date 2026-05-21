@@ -65,8 +65,6 @@ function solve(prob::FittingProblem, alg::Union{NelderMead} = OptimizationOptimJ
         @warn "Upper boundaries are currently ignored during local optimization."
     end
 
-    @show p0
-
     optim_prob = OptimizationProblem(optfun, p0)
     result = OptimizationResult(alg, objective)
     result.objective = objective
