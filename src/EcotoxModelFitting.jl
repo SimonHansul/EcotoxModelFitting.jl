@@ -32,6 +32,8 @@ export C2K
 include("dataset.jl")
 export Dataset, add!, getinfo, get_target, normalize_weights!
 
+include("target_computation.jl")
+
 include("parameters.jl")
 return Parameters
 
@@ -96,6 +98,7 @@ export PMCBackend, run_PMC!, update_data_weights!, generate_pmc_simulator, gener
 
 include("addmypet_data_retrieval.jl")
 export retrieve_amp_data, parse_mydata
+
 
 
 end # module EcotoxModelFitting

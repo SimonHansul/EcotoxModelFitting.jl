@@ -1,6 +1,6 @@
 
 function prior_predictive_check(
-    f::PMCBackend;
+    pmc::PMCBackend;
     n::Int64 = 100
     )::NamedTuple
 
@@ -12,10 +12,10 @@ function prior_predictive_check(
 
     @showprogress @threads for i in 1:n
         
-        prior_sample = rand(f.prior)
-        prediction = f.simulator(prior_sample)
-
-        ρ  = euclidean_distance(f.data, prediction)
+        prior_sample = rand(pmc.prior)
+        prediction = pmc.simulator(prior_sample)
+        
+        ρ  = euclidean_distance(pmc.scaled_data, prediction)
 
         predictions[i] = prediction
         dists[i] = ρ

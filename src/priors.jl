@@ -63,7 +63,7 @@ mutable struct Prior <: AbstractPrior
     dists::Vector{Union{Hyperdist,Distribution}}
     gendists::Vector{Function}
     is_hyper::Vector{Bool}
-    scaled_dists::Vector{Distribution}
+    #scaled_dists::Vector{Distribution}
     μs::Vector{Float64}
     σs::Vector{Float64}
     
@@ -91,7 +91,7 @@ mutable struct Prior <: AbstractPrior
         dists = Union{Distribution,Hyperdist}[]
         gendists = Function[]
         is_hyper = Bool[]
-        scaled_dists = Distribution[]
+        #scaled_dists = Distribution[]
         μs = Float64[]
         σs = Float64[]
 
@@ -99,13 +99,13 @@ mutable struct Prior <: AbstractPrior
 
             #@assert !(pair.first in RESERVED_COLNAMES) "The following names are reserved and cannot be used for parameters: $(RESERVED_COLNAMES)"
 
-            scaled_dist, μ, σ = scaledist(pair.second)
+            #scaled_dist, μ, σ = scaledist(pair.second)
 
             push!(labels, pair.first)
             push!(dists, pair.second)
-            push!(scaled_dists, scaled_dist)
-            push!(μs, μ)
-            push!(σs, σ)
+            #push!(scaled_dists, scaled_dist)
+            #push!(μs, μ)
+            #push!(σs, σ)
             
             if typeof(pair.second) != Hyperdist
                 push!(is_hyper, false)
@@ -120,7 +120,7 @@ mutable struct Prior <: AbstractPrior
             dists, 
             gendists, 
             is_hyper, 
-            scaled_dists, 
+            #scaled_dists, 
             μs, 
             σs
             )
@@ -165,10 +165,10 @@ function setindex!(prior::Prior, value::Union{Distribution,Hyperdist}, param::Un
     index = findfirst(isequal(param), prior.labels)
     @assert index !== nothing "Parameter $param not found in prior object"
 
-    scaled_dist, μ, σ = scaledist(value)
+    #scaled_dist, μ, σ = scaledist(value)
 
     prior.dists[index] = value
-    prior.scaled_dists[index] = scaled_dist
+    #prior.scaled_dists[index] = scaled_dist
     prior.μs[index] = μ
     prior.σs[index] = σ
 
@@ -184,7 +184,7 @@ function add_param!(prior::Prior, pair::Pair)
 
     push!(prior.labels, pair.first)
     push!(prior.dists, pair.second)
-    push!(prior.scaled_dists, scaled_dist)
+    #push!(prior.scaled_dists, scaled_dist)
     push!(prior.μs, μ)
     push!(prior.σs, σ)
 

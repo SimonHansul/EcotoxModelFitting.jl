@@ -7,33 +7,15 @@ mutable struct PMCBackend
     simulator::Function
     loss::Function
     loss_functions::AbstractVector
-    data::Union{AbstractDataset,OrderedDict}
-    #time_var::Symbol
-    #response_vars::Vector{Vector{Symbol}}
-    #grouping_vars::Vector{Vector{Symbol}}
-    #data_weights::Vector{Vector{Float64}}
-    #time_resolved::Vector{Bool}
-    #plot_data::Function
-    #losses::Matrix{Float64}
-    #accepted::Matrix{Float64}
-    #thresholds::Vector{Float64}
-    #weights::Vector{Float64}
-    #combine_losses::Function
+    scaled_data::Union{AbstractDataset,OrderedDict}
+    scaling_factors::Vector{Vector{Real}}
 
     """
         PMCBackend(;
                 prior::Prior, 
                 completeparams::ComponentArray,
                 simulator::Function, 
-                data::Any, 
-                response_vars::Vector{Vector{Symbol}},
-                time_resolved::Vector{Bool},
-                data_weights::Union{Nothing,Vector{Vector{Float64}}} = nothing,
-                time_var::Union{Nothing,Symbol} = nothing,
-                grouping_vars::Union{Nothing,Vector{Vector{Symbol}}} = nothing,
-                plot_data::Function = function plot_data() plot() end,
-                loss_functions::Union{Vector{Vector{Function}},Function} = loss_mse, 
-                combine_losses::Function = sum
+                data::Any
                 )
 
     Initialize a `PMCBackend` instance, collecting all information needed to perform a fit. 
@@ -59,15 +41,7 @@ mutable struct PMCBackend
         prior::Prior, 
         completeparams::ComponentArray,
         simulator::Function, 
-        data::Dataset, 
-        #response_vars::Vector{Vector{Symbol}},
-        #time_resolved::Vector{Bool},
-        #data_weights::Union{Nothing,Vector{Vector{Float64}}} = nothing,
-        #time_var::Union{Nothing,Symbol} = nothing,
-        #grouping_vars::Union{Nothing,Vector{Vector{Symbol}}} = nothing,
-        #loss_functions::Union{Vector{Vector{Function}},Function} = loss_mse, 
-        #combine_losses::Function = sum, # function that combines losses into single value; can also be x->x to retain all losses
-        #plot_data::Function = emptyplot
+        data::Dataset
         )
 
         pmc = new()
@@ -76,14 +50,12 @@ mutable struct PMCBackend
         pmc.completeparams = deepcopy(completeparams)
         pmc.psim = [deepcopy(pmc.completeparams) for _ in 1:Threads.nthreads()]
         
-        pmc.data = data
+        pmc.scaled_data, pmc.scaling_factors = scale_data(data)
         pmc.simulator = generate_pmc_simulator(completeparams, prior, simulator)
 
         return pmc
     end
 end
-
-
 
 # TODO: should be removed after v0.3.0
 function normalize_observation_weights!(data::Dataset)::Nothing
@@ -100,8 +72,6 @@ function normalize_observation_weights!(data::Dataset)::Nothing
 
     return nothing
 end
-
-
 
 """
 Attempt to define a generic simulator function, based on the information given to the PMCBackend. <br> 
@@ -125,7 +95,7 @@ function generate_pmc_simulator(completeparams, prior::Prior, simulator::Functio
     pfit_labels = ComponentArrays.labels(pfit[1])
     idxs = [findfirst(x -> x == l, pfit_labels) for l in prior.labels]
 
-    function fitting_simulator(pvec::Vector; kwargs...) where R <: Real
+    function fitting_simulator(pvec::Vector; kwargs...)
         #psim = deepcopy(completeparams)
         #psim = pfit[idx] # pick the parameter copy for the current thread
 
@@ -139,83 +109,413 @@ function generate_pmc_simulator(completeparams, prior::Prior, simulator::Functio
     return fitting_simulator
 end
 
+
+compute_thresholds(q_dist::Float64, losses::Matrix{Float64}) = [quantile(d, q_dist) for d in eachrow(losses)]
+function norm(x)
+    s = sum(filter(isfinite, x))
+    return s == 0 ? fill(1.0 / length(x), length(x)) : x ./ s
+end
+
+function epanechnikov_acceptance_probability(dist::Real, threshold::Real)
+    if dist > threshold
+        return 0
+    else
+        
+        u = dist/threshold
+        w = 1/threshold * (1 - (dist/threshold)^2)
+
+        return w
+    end
+end
+
 """
-    define_data_scales(f::PMCBackend, join_vars::Vector{Vector{Symbol}}; strategy = "maxima")::Vector{Vector{Float64}}
+    prior_prob(prior::Prior, theta::AbstractVector)
 
-Defines data scales based on strategy "maxima".
-
-Strategy "var2" is still to be implemented.
-"var2" uses twice the mean-centered variance of the data, 
-where mean-centering is done for each `join_var`. 
-
-(`join_vars` are `grouping_vars`+`time_var`).
-
-In combination with `loss=loss_mse`, the resulting loss function is the simplified normal likelihood, 
-corrected for the number of observations per response and grouping variable.
+This function calculates the prior probability of a particle, using the unit-scaled prior distributions and particle. 
 """
-function define_data_scales(
-    f::PMCBackend, 
-    join_vars::Vector{Vector{Symbol}}; 
-    strategy = "maxima"
-    )::Vector{Vector{Float64}}
+@inline function prior_prob(prior::Prior, θ::AbstractVector)
+    probs = pdf.(prior.dists, θ) #scale_param.(theta, prior.μs, prior.σs)
+    return prod(probs)
+end
 
-    if strategy == "maxima"
-        scales = [zeros(size(vars)) for vars in f.response_vars]
+# TODO: what if `value` is a `Number`?
+function getval(value::DataFrame, var::Symbol)
+    return value[:,var]
+end
 
-        for (i,key) in enumerate(f.data.keys)
-            for (j,var) in enumerate(f.response_vars[i])
-                scale = maximum(skipmissing(f.data[key][:,var]))
-                scales[i][j] = scale
+function get_maxima(data::AbstractDataset)
+
+    maxima = [[] for _ in 1:length(data.values)]
+
+    for (i,key) in enumerate(data.values)
+        for (j,var) in enumerate(data.response_vars[i])
+            vals = getval(key, var)
+            push!(maxima[i], maximum(vals))
+        end
+    end
+
+    return maxima
+end
+
+function scale_value!(
+    value::DataFrame, 
+    response_var::Symbol, 
+    scaling_factor::Real
+    )
+
+    value[!,response_var] ./= scaling_factor
+
+    return nothing
+end
+
+function scale_data(data::Dataset)
+
+    scaled_data = deepcopy(data)
+    maxima = get_maxima(data)
+
+    for (i,value) in enumerate(scaled_data.values)
+        for (j,var) in enumerate(scaled_data.response_vars[i])
+            scale_value!(value, var, maxima[i][j])
+        end
+    end
+
+    return scaled_data, maxima
+end
+
+"""
+    scale_sim!(sim::MinimalDataset, scaling_factors::Vector{Vector{Real}})
+
+Apply scaling factors to simulation.
+The scaling factors will usually be the maximum of observed values per key and response var.
+"""
+function scale_sim!(sim::MinimalDataset, data::Dataset, scaling_factors::Vector{Vector{Real}})
+   
+    for (i,factors) in enumerate(scaling_factors)
+        for (j,factor) in enumerate(factors)
+            scale_value!(sim.values[i], data.response_vars[i][j], factors[j])
+        end
+    end
+
+    return nothing
+end
+
+scale_sim!(::Nothing, ::Dataset, ::Any) = nothing 
+
+"""
+    run_pmc!(
+        pmc::PMCBackend; 
+        n::Int = 1000,
+        n_init::Union{Nothing,Int} = nothing,
+        q_dist::Float64 = .1,
+        t_max = 3,
+        evals_per_sample::Int64 = 1,
+    )::PMCResult
+
+Execute Population Monte Carlo Approximate Bayesian Computation (PMC-ABC).
+This follows the algorithm described by Beaumont et al. (2009), with the addition of an Epanechnikov acceptance kernel.
+
+args
+
+- `pmc::PMCBackend`
+
+kwargs
+
+- `dist`: A distance funtion. Default is `f.loss`. 
+- `n`: Number of evaluated samples per population
+- `n_init`: Number of evaluated samples in the initial population. The initial population may contain more non-finite losses, so it can make sense to choose `n_init>n`.
+- `q_dist`: Distance quantile to determine next acceptance threshold. A lower `q_dist` value leads to more agressive rejection and faster convergence to a solution, with the risk of identifying a local minimum. If all samples return a finite loss, the number of accepted particles is `n*q_eps`. If there are Infs or NaNs in the losses, the number of accepted particles will be lower. 
+- `savedir`: The directory under which results are collected (complete path includes savetag).
+- `savetag`: Tag under which results are saved. 
+- `continue_from`: Path to a checkpoint file from which to continue the fitting. 
+- `paramlabels`: Formatted parameter labels used to generate a summary of the posterior distribution as latex table. Labels have to be LaTeX-compatible.  
+
+## References
+
+Beaumont, M. A., Cornuet, J. M., Marin, J. M., & Robert, C. P. (2009). Adaptive approximate Bayesian computation. Biometrika, 96(4), 983-990.
+"""
+function run_pmc!(
+    pmc::PMCBackend; 
+    n::Int = 1000,
+    n_init::Union{Nothing,Int} = nothing,
+    q_dist::Float64 = .1,
+    t_max = 3,
+    evals_per_sample::Int64 = 1,
+    )::PMCResult
+
+    t = 0
+
+    all_particles = Matrix{Float64}[]
+    all_dists = Matrix{Float64}[]
+    all_weights = Vector{Float64}[]
+    all_vars = Vector{Float64}[]
+    all_thresholds = Vector{Float64}[]
+
+    lower = minimum.(pmc.prior.dists)
+    upper = maximum.(pmc.prior.dists)
+
+    if isnothing(n_init)
+        n_init = n
+    end
+
+    #if !isnothing(savetag)
+    #    @info "Saving results to $(joinpath(savedir, savetag))"
+    #
+    #    if !isdir(joinpath(savedir, savetag))
+    #        mkdir(joinpath(savedir, savetag))
+    #    end
+    #end
+    
+    while (t <= t_max) 
+        t += 1
+        if t == 1       
+            # if there is no previous checkpoint given via the continue_from argument, 
+            # run the initial population     
+            if true#isnothing(continue_from)
+                @info "#### ---- Evaluating $n_init initial samples on $(Threads.nthreads()) threads ---- ####"
+                
+                particles = Vector{Vector{Float64}}(undef, n_init)
+                weights = fill(1/n_init, n_init)
+                dists = Vector{Union{Float64,Vector{Float64}}}(undef, n_init)
+
+                @showprogress @threads for i in 1:n_init
+                    θ = rand.(pmc.prior.dists) # take a prior sample
+                    L = 0. # initialize loss for this sample
+                    for eval in 1:evals_per_sample
+                        sim = pmc.simulator(θ) # run the simulation
+                        scale_sim!(sim, pmc.scaled_data, pmc.scaling_factors)
+                        @show sim["aquatic"]
+                        L += euclidean_distance(pmc.scaled_data, sim) # add up dists
+                    end
+                    particles[i] = θ
+                    dists[i] = L/evals_per_sample # average the dists retrieved from repeated simulations
+                end
+                
+                particles = hcat(particles...)
+                dists = hcat(dists...)
+
+                valid_dist_idxs = [sum(isinf.(x) .|| isnan.(x))==0 for x in eachcol(dists)]
+                
+                particles = particles[:,valid_dist_idxs]
+                dists = dists[:,valid_dist_idxs]
+                weights = weights[valid_dist_idxs]
+
+                # apply (possibly multivariate) rejection 
+
+                threshold = compute_thresholds(q_dist, dists)
+                accepted_particle_idxs = [sum(d .> threshold)==0 for d in eachcol(dists)]
+                
+                particles = particles[:,accepted_particle_idxs]
+                dists = dists[:,accepted_particle_idxs]
+
+                smooth_acceptance_probs = epanechnikov_acceptance_probability.(dists, threshold) |> norm |> vec
+                weights = weights[accepted_particle_idxs] |> norm |> 
+                x -> x .* smooth_acceptance_probs |> norm
+
+                # take τ to be twice the empirical variance of Θ
+                vars = [2*var(tht) for tht in eachrow(particles)]
+
+                push!(all_particles, particles)
+                push!(all_weights, weights)
+                push!(all_dists, dists)
+                push!(all_vars, vars)
+                push!(all_thresholds, threshold)
+
+                # save data to checkpoint
+                #if !(isnothing(savetag))
+                #    save(joinpath(savedir, "checkpoint.jld2"), Dict(
+                #        "particles" => all_particles, 
+                #        "weights" => all_weights, 
+                #        "dists" => all_dists,
+                #        "variances" => all_vars, 
+                #        "thresholds" => all_thresholds,
+                #        "settings" => Dict(
+                #            "n" => n, 
+                #            "n_init" => n_init, 
+                #            "t_max" => t_max, 
+                #            "q_dist" => q_dist
+                #        )
+                #    ))
+                #end
+            # if we have a previous checkpoint to continue from, load data and continue
+            else
+                @info "Continuing model fit from checkpoint $(continue_from)"
+                chk = load(continue_from)
+                all_particles = chk["particles"]
+                all_weights = chk["weights"]
+                all_dists = chk["dists"]
+                all_vars = chk["variances"]
+                all_thresholds = chk["thresholds"]
+            end
+        else
+            
+            @info "#### ---- PMC step $(t-1)/$(t_max) ---- ####"
+
+            old_particles = all_particles[end]
+            old_weights = all_weights[end]
+            old_vars = all_vars[end]
+            old_vars = max.(1e-100, old_vars)
+            
+            particles = Vector{Vector{Float64}}(undef, n)
+            weights = fill(1/n, n)
+            dists = Vector{Union{Float64,Vector{Float64}}}(undef, n)
+
+            @showprogress @threads for i in 1:n
+
+                # take a weighted sample of previously accepted particles
+                idx = sample(1:length(old_weights), Weights(old_weights))
+                 
+                # get associated Θ and weights
+                θ_i_ast = old_particles[:,idx]
+                ω = old_weights[idx]
+                θ_i = similar(θ_i_ast)
+
+                # perturb the particle
+                for (k,(tht_k,var_k)) in enumerate(zip(θ_i_ast, old_vars))
+                    θ_i[k] = rand(truncated(Normal(tht_k, var_k .+ 1e-100), lower[k], upper[k]))
+                end
+
+                # calculate the weight 
+                weight_num = prior_prob(pmc.prior, θ_i) # numerator is the prior probability
+                weight_denom = 1e-300 # initialize denominator
+
+                # set ω_it ∝ π(θ)/∑(ω_jt-1 K(θ_i | θ_j, τ^2)} (cf. Beaumont et al. 2009)
+                for j in eachindex(old_weights)
+                    ω_j = old_weights[j]
+                    θ_j = old_particles[:,j]
+                    ϕ = prod(pdf.(Normal.(), (θ_j .- θ_i)./old_vars))
+                    weight_denom += ω_j * ϕ
+                end
+
+                # using log-weights often stabilizes the posterior
+                # FIXME: 
+                # log-transformation of weights distorts the posterior 
+                # this wasintroduced as a hotfix because we keep running into convergence issues for complex models if we use the "normal weights"
+                #ω = log((weight_num/weight_denom) + 1)
+                ω = (weight_num/weight_denom)
+
+                # run the simulations
+                L = 0.
+                for eval in 1:evals_per_sample
+                    sim = pmc.simulator(θ_i)
+                    L += euclidean_distance(pmc.scaled_data, sim) # generate ρ(x,y)
+                end
+
+                particles[i] = θ_i
+                weights[i] = ω
+                dists[i] = L/evals_per_sample
+            end
+
+            particles = hcat(particles...)
+            dists = hcat(dists...)
+
+            valid_dist_idxs = [sum(isinf.(x) .|| isnan.(x))==0 for x in eachcol(dists)]
+
+            particles = particles[:,valid_dist_idxs]
+            dists = dists[:,valid_dist_idxs]
+            weights = weights[valid_dist_idxs]
+
+            # rejection step
+            threshold = compute_thresholds(q_dist, dists)
+            accepted_particle_idxs = [sum(l .> threshold)==0 for l in eachcol(dists)]
+            particles = particles[:,accepted_particle_idxs]
+            weights = weights[accepted_particle_idxs] |> norm 
+            dists = dists[:,accepted_particle_idxs]
+
+            # apply smooth acceptance probability to weights and re-normalize
+            smooth_acceptance_probs = epanechnikov_acceptance_probability.(dists, threshold) |> norm |> vec
+            weights = weights .* smooth_acceptance_probs |> norm
+            
+            # take τ^2_t+1 as twice the weighted empirical variance of the θ_its 
+            vars = [2*var(tht, Weights(weights)) for tht in eachrow(particles)]
+
+            push!(all_particles, particles)
+            push!(all_weights, weights)
+            push!(all_dists, dists)
+            push!(all_vars, vars)
+            push!(all_thresholds, threshold)
+            
+            # save data to checkpoint
+            if false #!(isnothing(savetag))
+                save(joinpath(savedir, "checkpoint.jld2"), Dict(
+                    "particles" => all_particles, 
+                    "weights" => all_weights, 
+                    "dists" => all_dists,
+                    "variances" => all_vars, 
+                    "thresholds" => all_thresholds,
+                    "prior" => pmc.prior,
+                    "settings" => Dict(
+                        "n" => n, 
+                        "n_init" => n_init, 
+                        "t_max" => t_max, 
+                        "q_dist" => q_dist
+                    )))
             end
         end
+    end
 
-        return scales
+    accepted = all_particles[end]
+    weights = all_weights[end]
+    dists = all_dists[end]
+    
+    if false #!isnothing(savetag)
+        @info "Saving results to $(joinpath(savedir, savetag))"
+    
+        samples = DataFrame(accepted', pmc.prior.labels)
+        samples[!,:weight] .= weights
+        samples[!,:loss] = vcat(dists...)
+        
+        settings = DataFrame(n = n, q_dist = q_dist, t_max = t_max, priors = pmc.prior.dists)
 
-    else 
-        error("Strategy $strategy not implemented or work in progress")
+        #CSV.write(joinpath(savedir, "samples.csv"), samples)
+        #CSV.write(joinpath(savedir, "settings.csv"), settings)
 
-        #scales = [zeros(size(vars)) for vars in f.response_vars]
-        #
-        ## for every data table
-        #for (i,key) in enumerate(f.data.keys)
-        #    # if we have no join vars (i.e. no time variable and no additional grouping vars), 
-        #    # then we do the mean-centering over all values for each response variable
-        #    if length(join_vars[i]) == 0
-        #        for (j,y) in enumerate(f.response_vars[i])
-        #            yvals = f.data[key][:,y]
-        #            if length(yvals)>1
-        #                scales[i][j] = 2*var(yvals .- mean(yvals))
-        #            # if we have only one value, then the scale is the squared value itself
-        #            else
-        #                scales[i][j] = yvals[1]^2
-        #            end
-        #        end
-        #    # if we have join vars (time, grouping vars or both), 
-        #    # then we do the mean-centering for each value of each join var
-        #    else
-        #        for (j,y) in enumerate(f.response_vars[i])
-        #            centered_yvals = []
-        #            all_yvals = []
-        #            for (m,jvar) in enumerate(join_vars[i])
-        #                for (l,jvar_val) in enumerate(unique(f.data[key][:,jvar]))
-        #                    df = f.data[key]
-        #                    yvals = df[df[:,jvar].==jvar_val,y]
-        #                    yvals_mean = mean(skipmissing(yvals))
-        #                    push!(centered_yvals,  yvals .- mean(yvals))
-        #                    push!(all_yvals, yvals)
-        #                end
-        #            end
-        #
-        #            if length(unique(centered_yvals))>1
-        #                @info """For $key data and repsonse variable $y, found no variance within groups to calculate error variance. Using mean(y)^2 as data scale."""
-        #                scales[i][j] = 2*var(centered_yvals)
-        #            else
-        #                scales[i][j] = mean(all_yvals)^2
-        #            end
-        #        end
-        #    end
-        #end
+        #priors_df = DataFrame(
+        #    param = pmc.prior.labels, 
+        #    dist = pmc.prior.dists
+        #)
+        #CSV.write(joinpath(savedir, "priors.csv"), priors_df)
+
+        # saving posterior summary to csv + tex  
+        #_ = generate_posterior_summary(
+        #    pmc;
+        #    tex = !isnothing(savetag),
+        #    savedir = savedir,
+        #    savetag = savetag,
+        #    paramlabels = paramlabels
+        #    )
 
     end
 
+    return PMCResult(
+        all_particles, 
+        all_weights, 
+        all_dists, 
+        all_vars, 
+        accepted, 
+        weights,
+        vec(dists)
+    )
+end
+
+struct PMCResult <: AbstractFittingResult
+    all_particles
+    all_weights
+    all_dists
+    all_vars
+    accepted
+    weights
+    dists
+end
+
+
+"""
+Returns best fit as `Vector{Real}`. 
+
+"""
+function get_bestfit(res::PMCResult)::Vector{Real}
+
+    idx_bestfit = argmin(vec(res.dists))
+    pfit = res.accepted[:,idx_bestfit]
+
+    return pfit
 end
