@@ -88,13 +88,52 @@ end
 
 """ 
 Experimental: Euclidean distance with symmetric bounded scaling and log-transformation of data.
+# NOTE: simulations that include negative values will be rejected immediatedly
+# 0s in the data are ok (we use a ln(x+1)-transform), but negative values in the observations will fail
 """
 function symmbound_log_euclidean(a, b, w)
+
+    if minimum(b)<0 # reject observations with negative values
+        return Inf
+    end
 
     loga = log1p.(a)
     logb = log1p.(b)
 
     return sqrt(sum(((w ./ length(loga)) .* (((loga .- logb) .^2) ./(mean(loga)^2 + mean(logb)^2)))))
+
+end
+
+"""
+Experimental: Euclideanb distance with symmetric unbounded scaling.
+"""
+function symm_unbound_euclidean(a, b, w)
+
+    weight = w ./ length(a)
+    sse = ((a .- b).^2)
+    normfact = ((1 ./ a.^2) .+ (1 ./ b.^2))
+
+    return sqrt(sum(weight .* sse .* normfact))
+
+end
+
+"""
+Experimental: Euclidean distance with symmetric unbounded scaling and log-transform.
+"""
+function symm_unbound_log_euclidean(a, b, w)
+
+    if minimum(b)<0 # reject observations with negative values
+        return Inf
+    end
+
+    loga = log1p.(a)
+    logb = log1p.(b)
+
+    weight = w ./ length(loga)
+    sse = ((loga .- logb).^2)
+    normfact = ((1 ./ loga.^2) .+ (1 ./ logb.^2))
+
+    return sqrt(sum(weight .* sse .* normfact))
 
 end
 
