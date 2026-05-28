@@ -73,9 +73,7 @@ include("priors.jl")
 export Prior, deftruncnorm
 
 include("pmcbackend.jl")
-
-include("pmcbackend.jl")
-export run_PMC!
+export run_PMC!, PMCResult
 
 include("assign.jl")
 export assign_values_from_file!

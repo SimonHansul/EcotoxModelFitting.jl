@@ -78,11 +78,32 @@ function euclidean_distance(
 end
 
 """
+Experimental: Euclidean distance using the same scaling as the symmetric bounded loss function. 
+"""
+function symmbound_euclidean(a, b, w)
+    
+    return sqrt(sum(((w ./ length(a)) .* (((a .- b) .^2) ./(mean(a)^2 + mean(b)^2)))))
+
+end
+
+""" 
+Experimental: Euclidean distance with symmetric bounded scaling and log-transformation of data.
+"""
+function symmbound_log_euclidean(a, b, w)
+
+    loga = log1p.(a)
+    logb = log1p.(b)
+
+    return sqrt(sum(((w ./ length(loga)) .* (((loga .- logb) .^2) ./(mean(loga)^2 + mean(logb)^2)))))
+
+end
+
+"""
     euclidean_distance(data::Dataset, sim::Dataset; combine_distances::Bool = true)
 
 Compute euclidean distance between `data` and `sim`.
 """
-function euclidean_distance(data::Dataset, sim::AbstractDataset; combine_distances::Bool = true)
+function distance(data::Dataset, sim::AbstractDataset; combine_distances::Bool = true, distfun::Function = euclidean_distance)
 
     target_tot = []
 
@@ -100,7 +121,7 @@ function euclidean_distance(data::Dataset, sim::AbstractDataset; combine_distanc
                     name_obs = string(var)
                     name_sim = join([string(var), "_1"])
 
-                    target_part = euclidean_distance(
+                    target_part = distfun(
                         joined[:,name_obs], 
                         Vector{Real}(joined[:,name_sim]), 
                         data.weights[i]
@@ -109,7 +130,7 @@ function euclidean_distance(data::Dataset, sim::AbstractDataset; combine_distanc
                 end
             # if the key is a scalar value, just return the distance
             elseif data[name] isa Number
-                push!(target_tot, euclidean_distance(data[name], sim[name], data.weights[i]))
+                push!(target_tot, distfun(data[name], sim[name], data.weights[i]))
             else 
                 error("Automatized target definition for non-DataFrames currently not implemented.")
             end
@@ -124,6 +145,8 @@ function euclidean_distance(data::Dataset, sim::AbstractDataset; combine_distanc
         return target_tot
     end    
 end
+
+distance(::Dataset, ::Nothing; kwargs...) = Inf
 
 function log_likelihood(data::Dataset, sim::Dataset, sigmas::Vector{Vector{Real}}; combine_likelihoods::Bool = true)#::Function
 

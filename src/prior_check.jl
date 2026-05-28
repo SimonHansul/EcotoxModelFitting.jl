@@ -4,8 +4,8 @@ function prior_predictive_check(
     n::Int64 = 100
     )::NamedTuple
 
-    dists = Vector{Union{Float64,Vector{Float64}}}(undef, n)
-    predictions = Vector{Any}(undef,n)
+    #dists = Vector{Union{Float64,Vector{Float64}}}(undef, n)
+    sims = Vector{Any}(undef,n)
     samples = Vector{Vector{Float64}}(undef, n)
 
     @info "#### ---- Evaluating $n prior samples on $(Threads.nthreads()) threads ---- ####"
@@ -15,16 +15,16 @@ function prior_predictive_check(
         prior_sample = rand(pmc.prior)
         prediction = pmc.simulator(prior_sample)
         
-        ρ  = euclidean_distance(pmc.scaled_data, prediction)
+        #ρ  = euclidean_distance(pmc.scaled_data, prediction)
 
-        predictions[i] = prediction
-        dists[i] = ρ
+        sims[i] = prediction
+        #dists[i] = ρ
         samples[i] = prior_sample
     end
 
     return (
-        predictions = predictions,
-        losses = dists,
+        sims = sims,
+        #losses = dists,
         samples = samples
     )
 end

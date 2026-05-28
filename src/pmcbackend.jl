@@ -7,7 +7,8 @@ mutable struct PMCBackend
     simulator::Function
     loss::Function
     loss_functions::AbstractVector
-    scaled_data::Union{AbstractDataset,OrderedDict}
+    data::AbstractDataset
+    scaled_data::AbstractDataset
     scaling_factors::Vector{Vector{Real}}
 
     """
@@ -50,6 +51,7 @@ mutable struct PMCBackend
         pmc.completeparams = deepcopy(completeparams)
         pmc.psim = [deepcopy(pmc.completeparams) for _ in 1:Threads.nthreads()]
         
+        pmc.data = data
         pmc.scaled_data, pmc.scaling_factors = scale_data(data)
         pmc.simulator = generate_pmc_simulator(completeparams, prior, simulator)
 
@@ -240,6 +242,7 @@ function run_pmc!(
     q_dist::Float64 = .1,
     t_max = 3,
     evals_per_sample::Int64 = 1,
+    distfun = euclidean_distance
     )::PMCResult
 
     t = 0
@@ -282,9 +285,8 @@ function run_pmc!(
                     L = 0. # initialize loss for this sample
                     for eval in 1:evals_per_sample
                         sim = pmc.simulator(θ) # run the simulation
-                        scale_sim!(sim, pmc.scaled_data, pmc.scaling_factors)
-                        @show sim["aquatic"]
-                        L += euclidean_distance(pmc.scaled_data, sim) # add up dists
+                        #scale_sim!(sim, pmc.scaled_data, pmc.scaling_factors)
+                        L += distance(pmc.data, sim; distfun = distfun) # add up dists
                     end
                     particles[i] = θ
                     dists[i] = L/evals_per_sample # average the dists retrieved from repeated simulations
@@ -385,19 +387,14 @@ function run_pmc!(
                     ϕ = prod(pdf.(Normal.(), (θ_j .- θ_i)./old_vars))
                     weight_denom += ω_j * ϕ
                 end
-
-                # using log-weights often stabilizes the posterior
-                # FIXME: 
-                # log-transformation of weights distorts the posterior 
-                # this wasintroduced as a hotfix because we keep running into convergence issues for complex models if we use the "normal weights"
-                #ω = log((weight_num/weight_denom) + 1)
+                
                 ω = (weight_num/weight_denom)
 
                 # run the simulations
                 L = 0.
                 for eval in 1:evals_per_sample
                     sim = pmc.simulator(θ_i)
-                    L += euclidean_distance(pmc.scaled_data, sim) # generate ρ(x,y)
+                    L += distance(pmc.data, sim; distfun = distfun) # generate ρ(x,y)
                 end
 
                 particles[i] = θ_i

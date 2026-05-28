@@ -18,7 +18,8 @@ If no `savetag` is provided, `tex=true` will be ignored.
 If a `savetag` is provided, 
 """
 function generate_posterior_summary(
-    f::PMCBackend; 
+    pmc::PMCBackend,
+    res::PMCResult; 
     tex = false,
     paramlabels::Union{Nothing,AbstractDict} = nothing,
     savedir::Union{Nothing,String} = nothing,
@@ -34,13 +35,13 @@ function generate_posterior_summary(
         "No savetag provided, ignoring tex=true"
     end
         
-    best_fit = f.accepted[:,argmin(vec(f.losses))]
-    medians = mapslices(x -> median(x, Weights(f.weights)), f.accepted, dims = 2) |> vec
-    q05 = mapslices(x -> quantile(x, Weights(f.weights), 0.05), f.accepted, dims=2) |> vec
-    q95 = mapslices(x -> quantile(x, Weights(f.weights), 0.95), f.accepted, dims=2) |> vec
+    best_fit = res.accepted[:,argmin(vec(res.dists))]
+    medians = mapslices(x -> median(x, Weights(res.weights)), res.accepted, dims = 2) |> vec
+    q05 = mapslices(x -> quantile(x, Weights(res.weights), 0.05), res.accepted, dims=2) |> vec
+    q95 = mapslices(x -> quantile(x, Weights(res.weights), 0.95), res.accepted, dims=2) |> vec
 
     posterior_summary = DataFrame(
-        param = f.prior.labels,
+        param = pmc.prior.labels,
         best_fit = best_fit, 
         median = medians, 
         q05 = q05, 
@@ -50,7 +51,7 @@ function generate_posterior_summary(
 
     if tex
         if !isnothing(paramlabels)
-            parnames = [paramlabels[p] for p in f.prior.labels]
+            parnames = [paramlabels[p] for p in res.prior.labels]
             tex_df = @transform(posterior_summary, :param = parnames)
             df_to_tex(tex_df, joinpath(savedir, savetag, "posterior_summary.tex"), colnames = ["Parameter", "Best fit", "Median", L"$P_{05}$", L"$P_{95}$"])
         end
