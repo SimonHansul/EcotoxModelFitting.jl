@@ -205,6 +205,7 @@ end
 
 scale_sim!(::Nothing, ::Dataset, ::Any) = nothing 
 
+
 """
     run_pmc!(
         pmc::PMCBackend; 
@@ -364,8 +365,10 @@ function run_pmc!(
                     
                     while isinf(L) # making sure that the sampling is repeated if distance is non-finite
                         # perturb the particle
+                 
+                        # uncorrelated perturbation sampling
                         for (k,(tht_k,var_k)) in enumerate(zip(θ_i_ast, old_vars))
-                            θ_i[k] = rand(truncated(Normal(tht_k, sqrt(var_k) .+ 1e-100), lower[k], upper[k]))
+                            θ_i[k] = θ_i = rand(truncated(Normal(tht_k, sqrt(var_k) .+ 1e-100), lower[k], upper[k]))
                         end
 
                         # calculate the weight 
@@ -376,8 +379,9 @@ function run_pmc!(
                         for j in eachindex(old_weights)
                             ω_j = old_weights[j]
                             θ_j = old_particles[:,j]
-                            #ϕ = prod(pdf.(Normal.(), (θ_j .- θ_i)./old_vars))
-                            ϕ = prod(pdf.(Normal.(θ_j, sqrt.(old_vars)), θ_i))
+
+                            #ϕ = prod(pdf.(Normal.(θ_j, sqrt.(old_vars)), θ_i))
+                            ϕ = pdf(MvNormal(θ_j, Σ), θ_i)
                             weight_denom += ω_j * ϕ
                         end
                         

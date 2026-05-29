@@ -52,19 +52,10 @@ export loglike_norm
 include("io.jl")
 export read_file
 
-
-# TODO: add a precompile statement
-#   - for local optim
-#   - for global optim
-
 @setup_workload begin
     prob = _get_minimal_problem()
     @compile_workload res = solve(prob)
 end
-
-
-# TODO: these are things that might be moved to a separate PMC extension
-# kept now for backwards compatibility
 
 # reserved column names for the posterior -> cannot be used as parameter names
 const RESERVED_COLNAMES = ["loss", "weight", "model", "chain"]#
