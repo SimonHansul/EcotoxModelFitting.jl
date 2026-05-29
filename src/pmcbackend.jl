@@ -1,5 +1,7 @@
+abstract type AbstractPMCBackend end
 
-mutable struct PMCBackend
+
+mutable struct PMCBackend <: AbstractPMCBackend
     
     prior::Prior
     completeparams#::ComponentArray
@@ -281,15 +283,19 @@ function run_pmc!(
                 dists = Vector{Union{Float64,Vector{Float64}}}(undef, n_init)
 
                 @showprogress @threads for i in 1:n_init
-                    θ = rand.(pmc.prior.dists) # take a prior sample
-                    L = 0. # initialize loss for this sample
-                    for eval in 1:evals_per_sample
-                        sim = pmc.simulator(θ) # run the simulation
-                        #scale_sim!(sim, pmc.scaled_data, pmc.scaling_factors)
-                        L += distance(pmc.data, sim; distfun = distfun) # add up dists
+                    let θ, L = Inf
+                        while isinf(L) # making sure that the sampling is repeated if distance is non-finite
+                            θ = rand.(pmc.prior.dists) # take a prior sample
+                            L = 0. # initialize loss for this sample
+                            for eval in 1:evals_per_sample
+                                sim = pmc.simulator(θ) # run the simulation
+                                #scale_sim!(sim, pmc.scaled_data, pmc.scaling_factors)
+                                L += distance(pmc.data, sim; distfun = distfun) # add up dists
+                            end
+                        end
+                        particles[i] = θ
+                        dists[i] = L/evals_per_sample # average the dists retrieved from repeated simulations
                     end
-                    particles[i] = θ
-                    dists[i] = L/evals_per_sample # average the dists retrieved from repeated simulations
                 end
                 
                 particles = hcat(particles...)
@@ -322,22 +328,6 @@ function run_pmc!(
                 push!(all_vars, vars)
                 push!(all_thresholds, threshold)
 
-                # save data to checkpoint
-                #if !(isnothing(savetag))
-                #    save(joinpath(savedir, "checkpoint.jld2"), Dict(
-                #        "particles" => all_particles, 
-                #        "weights" => all_weights, 
-                #        "dists" => all_dists,
-                #        "variances" => all_vars, 
-                #        "thresholds" => all_thresholds,
-                #        "settings" => Dict(
-                #            "n" => n, 
-                #            "n_init" => n_init, 
-                #            "t_max" => t_max, 
-                #            "q_dist" => q_dist
-                #        )
-                #    ))
-                #end
             # if we have a previous checkpoint to continue from, load data and continue
             else
                 @info "Continuing model fit from checkpoint $(continue_from)"
@@ -363,43 +353,48 @@ function run_pmc!(
 
             @showprogress @threads for i in 1:n
 
-                # take a weighted sample of previously accepted particles
-                idx = sample(1:length(old_weights), Weights(old_weights))
-                 
-                # get associated Θ and weights
-                θ_i_ast = old_particles[:,idx]
-                ω = old_weights[idx]
-                θ_i = similar(θ_i_ast)
+                let θ_i, L = Inf
+                    # take a weighted sample of previously accepted particles
+                    idx = sample(1:length(old_weights), Weights(old_weights))
+                    
+                    # get associated Θ and weights
+                    θ_i_ast = old_particles[:,idx]
+                    ω = old_weights[idx]
+                    θ_i = similar(θ_i_ast)
+                    
+                    while isinf(L) # making sure that the sampling is repeated if distance is non-finite
+                        # perturb the particle
+                        for (k,(tht_k,var_k)) in enumerate(zip(θ_i_ast, old_vars))
+                            θ_i[k] = rand(truncated(Normal(tht_k, sqrt(var_k) .+ 1e-100), lower[k], upper[k]))
+                        end
 
-                # perturb the particle
-                for (k,(tht_k,var_k)) in enumerate(zip(θ_i_ast, old_vars))
-                    θ_i[k] = rand(truncated(Normal(tht_k, var_k .+ 1e-100), lower[k], upper[k]))
+                        # calculate the weight 
+                        weight_num = prior_prob(pmc.prior, θ_i) # numerator is the prior probability
+                        weight_denom = 1e-300 # initialize denominator
+
+                        # set ω_it ∝ π(θ)/∑(ω_jt-1 K(θ_i | θ_j, τ^2)} (cf. Beaumont et al. 2009)
+                        for j in eachindex(old_weights)
+                            ω_j = old_weights[j]
+                            θ_j = old_particles[:,j]
+                            #ϕ = prod(pdf.(Normal.(), (θ_j .- θ_i)./old_vars))
+                            ϕ = prod(pdf.(Normal.(θ_j, sqrt.(old_vars)), θ_i))
+                            weight_denom += ω_j * ϕ
+                        end
+                        
+                        ω = (weight_num/weight_denom)
+            
+                        L = 0. # initialize loss for this sample
+                        for eval in 1:evals_per_sample
+                            sim = pmc.simulator(θ_i) # run the simulation
+                            #scale_sim!(sim, pmc.scaled_data, pmc.scaling_factors)
+                            L += distance(pmc.data, sim; distfun = distfun) # add up dists
+                        end
+                    end
+                    
+                    particles[i] = θ_i
+                    weights[i] = ω
+                    dists[i] = L/evals_per_sample
                 end
-
-                # calculate the weight 
-                weight_num = prior_prob(pmc.prior, θ_i) # numerator is the prior probability
-                weight_denom = 1e-300 # initialize denominator
-
-                # set ω_it ∝ π(θ)/∑(ω_jt-1 K(θ_i | θ_j, τ^2)} (cf. Beaumont et al. 2009)
-                for j in eachindex(old_weights)
-                    ω_j = old_weights[j]
-                    θ_j = old_particles[:,j]
-                    ϕ = prod(pdf.(Normal.(), (θ_j .- θ_i)./old_vars))
-                    weight_denom += ω_j * ϕ
-                end
-                
-                ω = (weight_num/weight_denom)
-
-                # run the simulations
-                L = 0.
-                for eval in 1:evals_per_sample
-                    sim = pmc.simulator(θ_i)
-                    L += distance(pmc.data, sim; distfun = distfun) # generate ρ(x,y)
-                end
-
-                particles[i] = θ_i
-                weights[i] = ω
-                dists[i] = L/evals_per_sample
             end
 
             particles = hcat(particles...)
