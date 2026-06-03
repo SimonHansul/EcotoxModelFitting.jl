@@ -1,5 +1,8 @@
 abstract type AbstractPMCBackend end
 
+#using FunctionWrappers
+#import FunctionWrappers: FunctionWrapper
+
 
 mutable struct PMCBackend <: AbstractPMCBackend
     
@@ -7,7 +10,7 @@ mutable struct PMCBackend <: AbstractPMCBackend
     completeparams#::ComponentArray
     psim#::ComponentArray
     simulator::Function
-    loss::Function
+    loss::Function #FunctionWrapper{Union{Nothing,DataFrame},Tuple{ComponentVector,Bool}}
     loss_functions::AbstractVector
     data::AbstractDataset
     scaled_data::AbstractDataset
@@ -368,7 +371,7 @@ function run_pmc!(
                  
                         # uncorrelated perturbation sampling
                         for (k,(tht_k,var_k)) in enumerate(zip(θ_i_ast, old_vars))
-                            θ_i[k] = θ_i = rand(truncated(Normal(tht_k, sqrt(var_k) .+ 1e-100), lower[k], upper[k]))
+                            θ_i[k] = rand(truncated(Normal(tht_k, sqrt(var_k) .+ 1e-100), lower[k], upper[k]))
                         end
 
                         # calculate the weight 
@@ -380,8 +383,8 @@ function run_pmc!(
                             ω_j = old_weights[j]
                             θ_j = old_particles[:,j]
 
-                            #ϕ = prod(pdf.(Normal.(θ_j, sqrt.(old_vars)), θ_i))
-                            ϕ = pdf(MvNormal(θ_j, Σ), θ_i)
+                            ϕ = prod(pdf.(Normal.(θ_j, sqrt.(old_vars)), θ_i))
+                            #ϕ = pdf(MvNormal(θ_j, Σ), θ_i)
                             weight_denom += ω_j * ϕ
                         end
                         

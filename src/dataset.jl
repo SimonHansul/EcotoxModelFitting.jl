@@ -134,6 +134,7 @@ import Base.setindex!
 
 function getindex(data::AbstractDataset, name::String)
     idx = findfirst(x -> x==name, data.names)
+    isnothing(idx) && error("Dataset does not contain key $(name).")
     return data.values[idx]
 end
 
@@ -209,3 +210,69 @@ function join(data::AbstractDataFrame, sim::AbstractDataFrame, joinvars)
     end
 end
 
+
+# ======================================== #
+# Display methods written by GPT-5.3-mini
+# ======================================== #
+
+import Base: show
+
+indent(io, level) = print(io, "  "^level)
+
+function _show_field(io, label, value, level)
+    indent(io, level)
+    print(io, "├─ ", label, ": ")
+
+    if value isa AbstractVector && !(value isa String)
+        if isempty(value)
+            println(io, "[]")
+        else
+            println(io)
+            for v in value
+                indent(io, level + 1)
+                println(io, "• ", v)
+            end
+        end
+    else
+        println(io, value)
+    end
+end
+
+function show(io::IO, ::MIME"text/plain", ds::AbstractDataset)
+
+    n = length(ds.names)
+
+    println(io, typeof(ds))
+    println(io, "entries: ", n)
+
+    n == 0 && return
+
+    println(io)
+
+    for i in eachindex(ds.names)
+
+        println(io, ds.names[i])
+
+        # value summary (kept compact)
+        indent(io, 1)
+        val = ds.values[i]
+        vtype = val isa DataFrame ? "DataFrame" :
+                val isa Matrix     ? "Matrix" :
+                val isa Number     ? "Number" :
+                string(typeof(val))
+
+        println(io, "├─ value: ", vtype)
+
+        _show_field(io, "grouping_vars", ds.grouping_vars[i], 1)
+        _show_field(io, "response_vars", ds.response_vars[i], 1)
+        _show_field(io, "time_vars", ds.time_vars[i], 1)
+
+        indent(io, 1)
+        println(io, "├─ comment: ", isempty(ds.comments[i]) ? "—" : ds.comments[i])
+
+        indent(io, 1)
+        println(io, "└─ skip: ", ds.skip[i] ? "true" : "false")
+
+        println(io)
+    end
+end
