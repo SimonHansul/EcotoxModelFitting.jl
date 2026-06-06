@@ -521,12 +521,10 @@ end
 
 
 # ======================================== #
-# EXPERIMENTAL: random forest PMC
+# EXPERIMENTAL: emulator-based forest PMC
 # ======================================== #
 
-using DecisionTree
-
-function run_rfpmc!(
+function run_emu_pmc!(
     pmc::PMCBackend; 
     n::Int = 1000,
     n_init::Union{Nothing,Int} = nothing,
@@ -551,11 +549,6 @@ function run_rfpmc!(
         n_init = n
     end
 
-    surrogate = RandomForestRegressor(
-        n_trees = 100,
-        max_depth = 10,
-    )
-    
     while (t <= t_max) 
         t += 1
         
@@ -572,23 +565,37 @@ function run_rfpmc!(
             particles = Vector{Vector{Float64}}(undef, n_init)
             weights = fill(1/n_init, n_init)
             dists = Vector{Union{Float64,Vector{Float64}}}(undef, n_init)
+            
+            thread_X = [Vector{Vector{Float64}}() for _ in 1:Threads.nthreads()]
+            thread_y = [Bool[] for _ in 1:Threads.nthreads()]
 
             @showprogress @threads for i in 1:n_init
+                tid = Threads.threadid()
+
                 let θ, L = Inf
-                    while isinf(L) # making sure that the sampling is repeated if distance is non-finite
-                        θ = rand.(pmc.prior.dists) # take a prior sample
-                        L = 0. # initialize loss for this sample
+                    while isinf(L)
+                        θ = rand.(pmc.prior.dists)
+
+                        L = 0.0
                         for eval in 1:evals_per_sample
-                            sim = pmc.simulator(θ) # run the simulation
-                            L += distance(pmc.data, sim; distfun = distfun) # add up dists
+                            sim = pmc.simulator(θ)
+                            L += distance(pmc.data, sim; distfun=distfun)
                         end
+
+                        push!(thread_X[tid-1], copy(θ))
+                        push!(thread_y[tid-1], isfinite(L))
                     end
+
                     particles[i] = θ
-                    dists[i] = L/evals_per_sample # average the dists retrieved from repeated simulations
+                    dists[i] = L / evals_per_sample
+
                     X_surr[i] = θ
                     y_surr[i] = L
                 end
             end
+
+            X_class = reduce(vcat, thread_X)
+            y_class = reduce(vcat, thread_y)
             
             particles = hcat(particles...)
             dists = hcat(dists...)
@@ -620,9 +627,7 @@ function run_rfpmc!(
             push!(all_vars, vars)
             push!(all_thresholds, threshold)
 
-            return surrogate, X_surr, y_surr
-            X_surr = hcat(X_surr...) # transpose?
-            fit!(surrogate, X_surr, y_surr)
+            return X_class, y_class, X_surr, y_surr
         else
             
             @info "#### ---- PMC step $(t-1)/$(t_max) ---- ####"

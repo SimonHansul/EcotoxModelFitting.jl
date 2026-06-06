@@ -238,7 +238,7 @@ function _show_field(io, label, value, level)
     end
 end
 
-function show(io::IO, ::MIME"text/plain", ds::AbstractDataset)
+function show(io::IO, ::MIME"text/plain", ds::Dataset)
 
     n = length(ds.names)
 
