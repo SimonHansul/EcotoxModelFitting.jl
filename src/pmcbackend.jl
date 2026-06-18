@@ -102,15 +102,18 @@ function generate_pmc_simulator(completeparams, prior::Prior, simulator::Functio
     pfit_labels = ComponentArrays.labels(pfit[1])
     idxs = [findfirst(x -> x == l, pfit_labels) for l in prior.labels]
 
-    function fitting_simulator(pvec::Vector; kwargs...)
-        #psim = deepcopy(completeparams)
-        #psim = pfit[idx] # pick the parameter copy for the current thread
+    fitting_simulator = let pfit = pfit, prior = prior, idxs = idxs, simulator = simulator
 
-        psim = pfit[max(1,Threads.threadid()-1)] # 
-        psim[idxs[.!prior.is_hyper]] = pvec[.!prior.is_hyper] # assign "normal" parameters directly
-        psim[idxs[prior.is_hyper]] = [gendist(h) for (gendist,h) in zip(prior.gendists, pvec[prior.is_hyper])] # assign hyperparameters through the appropriate gendist function
+        function fitting_simulator(pvec::Vector; kwargs...)
+            psim = pfit[Threads.threadid()]
 
-        return simulator(psim; kwargs...)
+            psim[idxs[.!prior.is_hyper]] = pvec[.!prior.is_hyper]
+            psim[idxs[prior.is_hyper]] =
+                [gendist(h) for (gendist,h) in zip(prior.gendists,
+                                                pvec[prior.is_hyper])]
+
+            simulator(psim; kwargs...)
+        end
     end
 
     return fitting_simulator
