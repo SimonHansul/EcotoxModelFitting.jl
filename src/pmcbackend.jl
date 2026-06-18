@@ -105,7 +105,8 @@ function generate_pmc_simulator(completeparams, prior::Prior, simulator::Functio
     fitting_simulator = let pfit = pfit, prior = prior, idxs = idxs, simulator = simulator
 
         function fitting_simulator(pvec::Vector; kwargs...)
-            psim = pfit[Threads.threadid()]
+            idx = max(1, Threads.threadid()-1)
+            psim = pfit[idx]
 
             psim[idxs[.!prior.is_hyper]] = pvec[.!prior.is_hyper]
             psim[idxs[prior.is_hyper]] =
