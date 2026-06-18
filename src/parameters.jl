@@ -5,7 +5,7 @@ mutable struct Parameters <: AbstractParameters
     values::Vector{Float64}
     lower::Vector{Float64}
     upper::Vector{Float64}
-    priors::Union{Nothing,Vector{Union{Distribution,CustomDist}}} # FIXME: this is probably super inefficient because CustomDist could be anything. At some point it will be preferrable to get rid of Hyperdist altogether
+    priors::Union{Nothing,Vector{Union{Distribution,CustomDist}}} 
     free::Vector{Bool}
     labels::Vector{AbstractString}
     units::Vector{Union{AbstractString,Unitful.Unitlike}}
