@@ -57,4 +57,4 @@
 ### v0.3.0
 
 - updated PMC backend to be compatible with the updated API
-- what used to be `PMCBackend` is now `PMCBackend`
+- what used to be `ModelFit` is now `PMCBackend`
