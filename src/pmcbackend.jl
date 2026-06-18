@@ -1,8 +1,5 @@
 abstract type AbstractPMCBackend end
 
-#using FunctionWrappers
-#import FunctionWrappers: FunctionWrapper
-
 
 mutable struct PMCBackend <: AbstractPMCBackend
     
@@ -374,6 +371,9 @@ function run_pmc!(
                             θ_i[k] = rand(truncated(Normal(tht_k, sqrt(var_k) .+ 1e-100), lower[k], upper[k]))
                         end
 
+                        # correlation perturbation sampling
+                        #θ_i = rand(MvNormal(θ_i, cov(old_particles') .* 2))
+
                         # calculate the weight 
                         weight_num = prior_prob(pmc.prior, θ_i) # numerator is the prior probability
                         weight_denom = 1e-300 # initialize denominator
@@ -382,9 +382,8 @@ function run_pmc!(
                         for j in eachindex(old_weights)
                             ω_j = old_weights[j]
                             θ_j = old_particles[:,j]
-
                             ϕ = prod(pdf.(Normal.(θ_j, sqrt.(old_vars)), θ_i))
-                            #ϕ = pdf(MvNormal(θ_j, Σ), θ_i)
+                            #ϕ = pdf(MvNormal(θ_j, cov(old_particles')), θ_i)  #
                             weight_denom += ω_j * ϕ
                         end
                         
@@ -496,7 +495,9 @@ function run_pmc!(
     )
 end
 
-struct PMCResult <: AbstractFittingResult
+abstract type AbstractPMCResult <: AbstractFittingResult end
+
+struct PMCResult <: AbstractPMCResult
     all_particles
     all_weights
     all_dists
