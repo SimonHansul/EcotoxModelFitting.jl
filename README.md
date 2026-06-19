@@ -1,4 +1,5 @@
 # EcotoxModelFitting.jl: Interface to define model fitting problems for dynamic models in ecotoxicology 
+# ⚠️ Migrated to codeberg: https://codeberg.org/DynamicEcotox/ecotoxmodelfitting.jl
 
 [![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
